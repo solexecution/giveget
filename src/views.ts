@@ -142,7 +142,8 @@ export function layout(opts: {
     ? html`<div class="gg-flash" role="status">${opts.flash}</div>`
     : "";
 
-  const themeAttr = opts.theme === "light" || opts.theme === "dark" ? ` data-theme="${opts.theme}"` : "";
+  const theme = opts.theme === "light" ? "light" : "dark";
+  const themeAttr = ` data-theme="${theme}"`;
   const mainClass = opts.user ? "gg-main" : "gg-main gg-main--anon";
   return `<!doctype html>
 <html lang="en"${themeAttr}>

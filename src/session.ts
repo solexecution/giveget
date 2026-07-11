@@ -49,7 +49,6 @@ export function setTheme(c: Context, theme: Theme): void {
 }
 
 export function toggleTheme(current: Theme): Theme {
-  // Binary toggle: default (undefined ≈ dark via OS) → light; light → dark; dark → light.
   return current === "light" ? "dark" : "light";
 }
 

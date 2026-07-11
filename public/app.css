@@ -39,7 +39,7 @@
   --gg-chip-bg: #f4f4f5;
 }
 
-:root, [data-theme="dark"] {
+html:not([data-theme="light"]) {
   --gg-bg: #09090b;
   --gg-bg-accent: radial-gradient(1200px 600px at 10% -10%, rgba(16,185,129,.12), transparent 55%),
                    radial-gradient(900px 500px at 90% 0%, rgba(245,158,11,.1), transparent 50%),
@@ -61,7 +61,7 @@
 [data-theme="light"] {
   color-scheme: light;
 }
-:root, [data-theme="dark"] {
+html:not([data-theme="light"]) {
   color-scheme: dark;
 }
 
