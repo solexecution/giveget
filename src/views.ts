@@ -63,7 +63,7 @@ export function layout(opts: {
   const themeIcon = opts.theme === "light" ? moonSvg : sunSvg;
   const personSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>`;
   const filterBtn = opts.filterBlade
-    ? raw(`<details class="gg-menu cat-blade nav-desktop-only">
+    ? html`<details class="gg-menu cat-blade nav-desktop-only">
         <summary class="gg-icon-btn" aria-label="Filter by category">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 5h16v2l-6 7v5l-4 1v-6L4 7z"/></svg>
         </summary>
@@ -71,7 +71,24 @@ export function layout(opts: {
           <h3>Categories</h3>
           ${opts.filterBlade.chips}
         </div>
-      </details>`)
+      </details>`
+    : "";
+
+  const accountMenu = opts.user
+    ? html`<details class="gg-menu">
+        <summary class="gg-icon-btn" aria-label="Account menu">${raw(personSvg)}</summary>
+        <div class="gg-menu__panel">
+          <div class="gg-menu__head">
+            <span>Signed in as <strong>${esc(opts.user.nickname)}</strong></span>
+            <a class="gg-icon-btn" href="/toggle-theme" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</a>
+          </div>
+          <a href="/me" class="gg-menu__item">Your profile</a>
+          ${isCoord ? raw(`<a href="/coord" class="gg-menu__item">Coordinator panel</a>`) : ""}
+          <form method="post" action="/logout">
+            <button type="submit" class="gg-menu__btn">Sign out</button>
+          </form>
+        </div>
+      </details>`
     : "";
 
   const headerActions = opts.user
@@ -79,30 +96,13 @@ export function layout(opts: {
         <div class="gg-header__actions">
           <a class="gg-icon-btn gg-icon-btn--accent nav-desktop-only" href="/#new-listing" aria-label="New listing" title="New listing">+</a>
           ${filterBtn}
-          ${raw(`<details class="gg-menu">
-            <summary class="gg-icon-btn" aria-label="Account menu">${personSvg}</summary>
-            <div class="gg-menu__panel">
-              <div class="gg-menu__head">
-                <span>Signed in as <strong>${esc(opts.user.nickname)}</strong></span>
-                <form method="post" action="/toggle-theme">
-                  <button type="submit" class="gg-icon-btn" aria-label="${themeLabel}" title="${themeLabel}">${themeIcon}</button>
-                </form>
-              </div>
-              <a href="/me" class="gg-menu__item">Your profile</a>
-              ${isCoord ? raw(`<a href="/coord" class="gg-menu__item">Coordinator panel</a>`) : ""}
-              <form method="post" action="/logout">
-                <button type="submit" class="gg-menu__btn">Sign out</button>
-              </form>
-            </div>
-          </details>`)}
+          ${accountMenu}
         </div>
       `
     : html`
         <div class="gg-header__actions">
           <a class="gg-icon-btn nav-desktop-only" href="/about" aria-label="How it works">?</a>
-          <form method="post" action="/toggle-theme">
-            <button type="submit" class="gg-icon-btn" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</button>
-          </form>
+          <a class="gg-icon-btn" href="/toggle-theme" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</a>
         </div>
       `;
 

@@ -197,7 +197,7 @@ app.post("/logout", (c) => {
   return c.redirect("/");
 });
 
-app.post("/toggle-theme", (c) => {
+app.get("/toggle-theme", (c) => {
   const current = getTheme(c);
   setTheme(c, toggleTheme(current));
   const back = c.req.header("referer") ?? "/";
