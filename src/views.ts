@@ -52,6 +52,7 @@ export function layout(opts: {
   body: string;
   flash?: string;
   welcomeName?: string;
+  archiveUndoId?: number;
   theme?: Theme;
   activeNav?: "browse" | "profile" | "coord" | "about";
   filterBlade?: { activeKey: string | null; chips: string };
@@ -84,6 +85,7 @@ export function layout(opts: {
             <a class="gg-icon-btn" href="/toggle-theme" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</a>
           </div>
           <a href="/me" class="gg-menu__item">Your profile</a>
+          <a href="/me#archived" class="gg-menu__item">Archived from browse</a>
           ${isCoord ? raw(`<a href="/coord" class="gg-menu__item">Coordinator panel</a>`) : ""}
           <form method="post" action="/logout">
             <button type="submit" class="gg-menu__btn">Sign out</button>
@@ -129,7 +131,7 @@ export function layout(opts: {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           New
         </a>
-        <a href="/me" class="${navProfile}">
+        <a href="/me" class="${navProfile}" title="Profile &amp; archived listings">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 14c-4.4 0-8 2.2-8 5v3h16v-3c0-2.8-3.6-5-8-5z"/></svg>
           Profile
         </a>
@@ -162,7 +164,7 @@ export function layout(opts: {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/app.css?v=6">
+<link rel="stylesheet" href="/app.css?v=7">
 </head>
 <body>
 <div class="gg-app">
@@ -181,8 +183,12 @@ export function layout(opts: {
   ${aboutModalHtml()}
 </div>
 ${opts.welcomeName ? `<div class="gg-toast" role="status">Welcome, <strong>${esc(opts.welcomeName)}</strong></div>` : ""}
+${opts.archiveUndoId ? `<div class="gg-toast gg-toast--undo" role="status" data-listing-id="${opts.archiveUndoId}">
+  <span>Archived · <a href="/me#archived">see in Profile</a></span>
+  <button type="button" class="gg-toast__undo">Undo</button>
+</div>` : ""}
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(()=>{})}</script>
-${opts.activeNav === "browse" ? '<script src="/card-swipe.js?v=1" defer></script>' : ""}
+${opts.activeNav === "browse" ? '<script src="/card-swipe.js?v=2" defer></script>' : ""}
 </body>
 </html>`;
 }
@@ -342,12 +348,12 @@ export function listingCard(
   return raw(html`
     <div class="listing-swipe" data-listing-id="${l.id}">
       <div class="listing-swipe__action" aria-hidden="true">
-        <span class="listing-swipe__label">Archive</span>
+        <span class="listing-swipe__label">Hide</span>
       </div>
       <div class="listing-swipe__panel">
         ${raw(cardInner)}
         <form method="post" action="/l/${l.id}/archive" class="listing-swipe__archive-form">
-          <button type="submit" class="listing-card__archive-btn" aria-label="Archive listing, hide from feed">Archive</button>
+          <button type="submit" class="listing-card__archive-btn" aria-label="Hide listing from feed">Hide from feed</button>
         </form>
       </div>
     </div>

@@ -118,9 +118,25 @@ describe("browse archive + new border logic", () => {
       redirect: "manual",
     });
     expect(archive.status).toBe(302);
+    expect(archive.headers.get("location")).toContain(`archived=${listingId}`);
 
     const board = await app.request(`${base}/`, { headers: { cookie: viewer } });
     expect(await board.text()).not.toContain(title);
+  });
+
+  test("archived query shows undo toast on browse", async () => {
+    const creator = await devAs("ToastArchiveCreator");
+    const viewer = await devAs("ToastArchiveViewer");
+    const title = `Toast archive ${Date.now()}`;
+    const listingId = await postListing(creator, title);
+
+    archiveListing("ToastArchiveViewer", listingId);
+
+    const board = await app.request(`${base}/?archived=${listingId}`, { headers: { cookie: viewer } });
+    const html = await board.text();
+    expect(html).toContain("gg-toast--undo");
+    expect(html).toContain(`data-listing-id="${listingId}"`);
+    expect(html).toContain("/me#archived");
   });
 
   test("new border shown for listings since last board visit", async () => {

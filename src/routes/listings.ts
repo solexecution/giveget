@@ -123,12 +123,16 @@ browseRoute.get("/", (c) => {
   `;
 
   const welcomeName = url.searchParams.has("welcome") ? user.nickname : undefined;
+  const archivedParam = url.searchParams.get("archived");
+  const archiveUndoId =
+    archivedParam && /^\d+$/.test(archivedParam) ? Number(archivedParam) : undefined;
   markBoardSeen(user.nickname);
   return c.html(layout({
     title: "Browse",
     user,
     body,
     welcomeName,
+    archiveUndoId,
     theme: getTheme(c),
     activeNav: "browse",
     filterBlade: { activeKey: validCat, chips: categoryChips(validCat, "give").__raw },
@@ -364,7 +368,13 @@ newListingRoutes.post("/l/:id/archive", (c) => {
   }
   archiveListing(user.nickname, id);
   const back = c.req.header("referer") ?? "/";
-  return c.redirect(back);
+  try {
+    const u = new URL(back);
+    u.searchParams.set("archived", String(id));
+    return c.redirect(u.pathname + u.search + u.hash);
+  } catch {
+    return c.redirect(`/?archived=${id}`);
+  }
 });
 
 // ---------- POST /l/:id/unarchive (restore to browse) ----------

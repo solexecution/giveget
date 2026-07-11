@@ -151,9 +151,9 @@ profileRoutes.get("/me", (c) => {
         ${raw(listingRows)}
       </article>
 
-      <article class="gg-article">
+      <article class="gg-article" id="archived">
         <h3>Archived from browse</h3>
-        <p class="gg-help">Hidden listings stay on the board for others. Restore any time.</p>
+        <p class="gg-help">Swipe left on a card in Browse to hide it. Find everything here in Profile → Archived. Restore any time.</p>
         ${raw(archivedRowsHtml)}
       </article>
 
