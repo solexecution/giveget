@@ -30,50 +30,10 @@ import { renderListingModals } from "./listings";
 
 export const profileRoutes = new Hono();
 
-function archivedListingsHtml(nickname: string): string {
-  const archivedRows = getArchivedListingsForUser(nickname);
-  if (archivedRows.length === 0) {
-    return html`<p><em>No archived listings. Swipe left on a card in Browse to hide ones you're not interested in.</em></p>`;
-  }
-  return `<ul>${archivedRows.map((row) => {
-    const listing = getListingById(row.listing_id);
-    if (!listing) return "";
-    return html`
-      <li>
-        <span>${listing.title}</span>
-        · <small>${listing.type} · archived ${relativeAge(row.archived_at)}</small>
-        <form method="post" action="/l/${listing.id}/unarchive" class="gg-inline-form">
-          <button type="submit" class="gg-btn-secondary">Restore</button>
-        </form>
-      </li>`;
-  }).join("")}</ul>`;
-}
-
-// ---------- GET /me/archived ----------
+// ---------- GET /me/archived (legacy — redirects to browse Hidden tab) ----------
 
 profileRoutes.get("/me/archived", (c) => {
-  const user = requireUser(c);
-
-  const body = html`
-    <div class="gg-stack">
-      <article class="gg-article">
-        <h2>Archived from browse</h2>
-        <p class="gg-help">Swipe left on a card in Browse to hide it. Restore any time to see it on the board again.</p>
-        ${raw(archivedListingsHtml(user.nickname))}
-        <p class="gg-profile-nav"><a href="/me">← back to profile</a></p>
-      </article>
-    </div>
-  `;
-
-  return c.html(layout({
-    title: "Archived",
-    user,
-    body,
-    theme: getTheme(c),
-    activeNav: "profile",
-    activeMenu: "archived",
-    coordNavVisible: getCoordNavVisible(c, user),
-  }));
+  return c.redirect("/?hidden=1");
 });
 
 // ---------- GET /me ----------
@@ -153,7 +113,7 @@ profileRoutes.get("/me", (c) => {
       <article class="gg-article gg-profile-hero">
         <h2>${user.nickname}</h2>
         <p class="gg-stat-line">Given ${user.given_count} · Received ${user.received_count}</p>
-        <p class="gg-profile-nav"><a href="/me/archived">Archived from browse${archivedCount > 0 ? ` (${archivedCount})` : ""}</a></p>
+        <p class="gg-profile-nav"><a href="/?hidden=1">Hidden from browse${archivedCount > 0 ? ` (${archivedCount})` : ""}</a></p>
         ${raw(vouchInfo)}
       </article>
 

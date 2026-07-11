@@ -21,8 +21,9 @@ import {
   isListingNewSinceLastVisit,
   markBoardSeen,
   RATE_LIMITS,
-  unarchiveListing,
+  getUserArchivedActiveListings,
   updateListingFields,
+  unarchiveListing,
 } from "../db";
 import { getCoordNavVisible } from "../device-auth";
 import { getCurrentUser, getTheme, HttpError, requireUser } from "../session";
@@ -40,6 +41,11 @@ import {
 } from "../views";
 import { MAX_PHOTOS_PER_LISTING, savePhoto } from "../images";
 
+function wantsJson(c: { req: { header: (name: string) => string | undefined } }): boolean {
+  const accept = c.req.header("accept") ?? "";
+  return accept.includes("application/json");
+}
+
 // ---------- GET / (browse) ----------
 
 export const browseRoute = new Hono();
@@ -55,15 +61,20 @@ browseRoute.get("/", (c) => {
 
   const cat = url.searchParams.get("cat") as CategoryKey | null;
   const validCat = cat && CATEGORIES.some((x) => x.key === cat) ? cat : null;
+  const showHidden = url.searchParams.get("hidden") === "1";
 
   const lastBoardSeenAt = user.last_board_seen_at;
   const archivedIds = new Set(getArchivedListingIds(user.nickname));
-  const gives = filterArchivedListings(getActiveListings("give", validCat ?? undefined), archivedIds);
-  const gets = filterArchivedListings(getActiveListings("get", validCat ?? undefined), archivedIds);
-  const allListings = [...gives, ...gets];
 
-  // Cache creator users and photos for each listing (each used twice — once for the
-  // card, once for the modal).
+  const boardGives = filterArchivedListings(getActiveListings("give", validCat ?? undefined), archivedIds);
+  const boardGets = filterArchivedListings(getActiveListings("get", validCat ?? undefined), archivedIds);
+  const hiddenGives = getUserArchivedActiveListings(user.nickname, "give", validCat ?? undefined);
+  const hiddenGets = getUserArchivedActiveListings(user.nickname, "get", validCat ?? undefined);
+  const hiddenCount = hiddenGives.length + hiddenGets.length;
+
+  type FeedItem = Listing;
+  const allListings = [...boardGives, ...boardGets, ...hiddenGives, ...hiddenGets];
+
   const creators = new Map<string, User>();
   const photosByListing = new Map<number, string[]>();
   for (const l of allListings) {
@@ -72,49 +83,108 @@ browseRoute.get("/", (c) => {
     photosByListing.set(l.id, getPhotosForListing(l.id));
   }
 
-  const renderCol = (items: typeof gives, emptyLabel: string) =>
+  const renderCol = (
+    items: FeedItem[],
+    emptyLabel: string,
+    cardOpts: { swipeArchive?: boolean; restoreAction?: boolean; isNew?: boolean }
+  ) =>
     items.length === 0
       ? html`<p><em>${emptyLabel}</em></p>`
       : items
           .map((l) => {
             const creator = creators.get(l.creator_nickname);
             if (!creator) return "";
+            const swipeArchive =
+              cardOpts.swipeArchive && l.creator_nickname !== user.nickname;
             return listingCard(l, creator, photosByListing.get(l.id) ?? [], {
               hrefPrefix: "#l-",
               viewer: user,
-              isNew: isListingNewSinceLastVisit(l.created_at, lastBoardSeenAt),
-              swipeArchive: l.creator_nickname !== user.nickname,
+              isNew: cardOpts.isNew ? isListingNewSinceLastVisit(l.created_at, lastBoardSeenAt) : false,
+              swipeArchive,
+              restoreAction: cardOpts.restoreAction,
             }).__raw;
           })
           .join("");
 
-  const givesCol = renderCol(gives, "Nothing on offer yet. Be the first.");
-  const getsCol = renderCol(gets, "Nobody's asked for anything yet.");
+  const feedTabsHtml = (
+    prefix: string,
+    givesCol: string,
+    getsCol: string,
+    giveEmpty: string,
+    getEmpty: string
+  ) => {
+    const giveId = `tab-${prefix}-give`;
+    const getId = `tab-${prefix}-get`;
+    return html`
+    <div class="feed-tabs feed-tabs--${prefix}">
+      <input type="radio" name="feed-tab-${prefix}" id="${giveId}" class="feed-tabs__radios" checked>
+      <input type="radio" name="feed-tab-${prefix}" id="${getId}" class="feed-tabs__radios">
+      <nav class="feed-tabs__nav" aria-label="Give or Get">
+        <label for="${giveId}">Give</label>
+        <label for="${getId}">Get</label>
+      </nav>
+      <div class="feed-cols">
+        <section class="feed-cols__give">
+          <h3>Give — things people share</h3>
+          ${raw(givesCol || html`<p><em>${giveEmpty}</em></p>`)}
+        </section>
+        <section class="feed-cols__get">
+          <h3>Get — things people need</h3>
+          ${raw(getsCol || html`<p><em>${getEmpty}</em></p>`)}
+        </section>
+      </div>
+    </div>
+  `;
+  };
+
+  const boardGivesCol = renderCol(boardGives, "Nothing on offer yet. Be the first.", {
+    swipeArchive: true,
+    isNew: true,
+  });
+  const boardGetsCol = renderCol(boardGets, "Nobody's asked for anything yet.", {
+    swipeArchive: true,
+    isNew: true,
+  });
+  const hiddenGivesCol = renderCol(hiddenGives, "Nothing hidden in Give.", { restoreAction: true });
+  const hiddenGetsCol = renderCol(hiddenGets, "Nothing hidden in Get.", { restoreAction: true });
 
   const detailModals = renderListingModals(allListings, user, {
     creators,
     photos: photosByListing,
   });
 
+  const scopeBoardChecked = showHidden ? "" : " checked";
+  const scopeHiddenChecked = showHidden ? " checked" : "";
+  const hiddenBadge = hiddenCount > 0 ? ` (${hiddenCount})` : "";
+
   const body = html`
     <h2 class="gg-page-title">Town Ranch board</h2>
     <p class="gg-page-sub">Give what you have · Get what you need</p>
-    <div class="feed-tabs">
-      <input type="radio" name="feed-tab" id="tab-give" class="feed-tabs__radios" checked>
-      <input type="radio" name="feed-tab" id="tab-get"  class="feed-tabs__radios">
-      <nav class="feed-tabs__nav" aria-label="Give or Get">
-        <label for="tab-give">Give</label>
-        <label for="tab-get">Get</label>
+    <div class="board-scope">
+      <input type="radio" name="board-scope" id="scope-board" class="board-scope__radios"${raw(scopeBoardChecked)}>
+      <input type="radio" name="board-scope" id="scope-hidden" class="board-scope__radios"${raw(scopeHiddenChecked)}>
+      <nav class="board-scope__nav" aria-label="Board or Hidden">
+        <label for="scope-board">Board</label>
+        <label for="scope-hidden">Hidden${raw(hiddenBadge)}</label>
       </nav>
-      <div class="feed-cols">
-        <section class="feed-cols__give">
-          <h3>Give — things people share</h3>
-          ${raw(givesCol)}
-        </section>
-        <section class="feed-cols__get">
-          <h3>Get — things people need</h3>
-          ${raw(getsCol)}
-        </section>
+      <div class="board-scope__panel board-scope__panel--board">
+        ${raw(feedTabsHtml(
+          "board",
+          boardGivesCol,
+          boardGetsCol,
+          "Nothing on offer yet. Be the first.",
+          "Nobody's asked for anything yet."
+        ))}
+      </div>
+      <div class="board-scope__panel board-scope__panel--hidden">
+        <p class="board-scope__hint"><em>Swipe left on Board to hide listings you're not interested in.</em></p>
+        ${raw(feedTabsHtml(
+          "hidden",
+          hiddenGivesCol,
+          hiddenGetsCol,
+          "Nothing hidden in Give.",
+          "Nothing hidden in Get."
+        ))}
       </div>
     </div>
 
@@ -123,16 +193,12 @@ browseRoute.get("/", (c) => {
   `;
 
   const welcomeName = url.searchParams.has("welcome") ? user.nickname : undefined;
-  const archivedParam = url.searchParams.get("archived");
-  const archiveUndoId =
-    archivedParam && /^\d+$/.test(archivedParam) ? Number(archivedParam) : undefined;
   markBoardSeen(user.nickname);
   return c.html(layout({
     title: "Browse",
     user,
     body,
     welcomeName,
-    archiveUndoId,
     theme: getTheme(c),
     activeNav: "browse",
     filterBlade: { activeKey: validCat, list: categoryFilterList(validCat, "give").__raw },
@@ -376,14 +442,8 @@ newListingRoutes.post("/l/:id/archive", (c) => {
     throw new HttpError(400, "Only active listings can be archived.");
   }
   archiveListing(user.nickname, id);
-  const back = c.req.header("referer") ?? "/";
-  try {
-    const u = new URL(back);
-    u.searchParams.set("archived", String(id));
-    return c.redirect(u.pathname + u.search + u.hash);
-  } catch {
-    return c.redirect(`/?archived=${id}`);
-  }
+  if (wantsJson(c)) return c.json({ ok: true, id });
+  return c.redirect("/");
 });
 
 // ---------- POST /l/:id/unarchive (restore to browse) ----------
@@ -393,7 +453,8 @@ newListingRoutes.post("/l/:id/unarchive", (c) => {
   const id = Number(c.req.param("id"));
   if (!Number.isInteger(id) || id < 1) throw new HttpError(404, "Listing not found.");
   unarchiveListing(user.nickname, id);
-  const back = c.req.header("referer") ?? "/me/archived";
+  if (wantsJson(c)) return c.json({ ok: true, id });
+  const back = c.req.header("referer") ?? "/?hidden=1";
   return c.redirect(back);
 });
 

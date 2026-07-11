@@ -466,6 +466,18 @@ export function filterArchivedListings(listings: Listing[], archivedIds: Readonl
   return listings.filter((l) => !archivedIds.has(l.id));
 }
 
+/** Active listings the user has archived (hidden) from browse, optionally filtered. */
+export function getUserArchivedActiveListings(
+  nickname: string,
+  type: ListingType,
+  category?: CategoryKey
+): Listing[] {
+  const archivedIds = new Set(getArchivedListingIds(nickname));
+  if (archivedIds.size === 0) return [];
+  const active = category != null ? getActiveListings(type, category) : getActiveListings(type);
+  return active.filter((l) => archivedIds.has(l.id));
+}
+
 export function isListingNewSinceLastVisit(createdAt: number, lastBoardSeenAt: number | null): boolean {
   if (lastBoardSeenAt == null) return false;
   return createdAt > lastBoardSeenAt;

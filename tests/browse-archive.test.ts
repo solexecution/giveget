@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { app } from "../src/server.ts";
 import {
   archiveListing,
-  createListing,
   filterArchivedListings,
+  getUserArchivedActiveListings,
   isListingNewSinceLastVisit,
   now,
   setLastBoardSeenAt,
@@ -49,6 +49,21 @@ async function postListing(cookie: string, title: string, creator = "ArchiveCrea
   return id;
 }
 
+function boardPanelHtml(fullHtml: string): string {
+  const start = fullHtml.indexOf('class="board-scope__panel board-scope__panel--board"');
+  if (start < 0) return fullHtml;
+  const hiddenStart = fullHtml.indexOf('class="board-scope__panel board-scope__panel--hidden"', start);
+  if (hiddenStart < 0) return fullHtml.slice(start);
+  return fullHtml.slice(start, hiddenStart);
+}
+
+function hiddenPanelHtml(fullHtml: string): string {
+  const start = fullHtml.indexOf('class="board-scope__panel board-scope__panel--hidden"');
+  if (start < 0) return "";
+  const end = fullHtml.indexOf("</div>", fullHtml.indexOf("feed-tabs--hidden", start));
+  return end > start ? fullHtml.slice(start, end) : fullHtml.slice(start);
+}
+
 describe("browse archive + new border logic", () => {
   test("isListingNewSinceLastVisit", () => {
     expect(isListingNewSinceLastVisit(100, null)).toBe(false);
@@ -66,24 +81,60 @@ describe("browse archive + new border logic", () => {
     expect(filtered.map((l) => l.id)).toEqual([1]);
   });
 
+  test("getUserArchivedActiveListings returns archived active listings", async () => {
+    const creator = await devAs("DbHiddenCreator");
+    const viewer = await devAs("DbHiddenViewer");
+    const title = `Db hidden ${Date.now()}`;
+    const listingId = await postListing(creator, title);
+    archiveListing("DbHiddenViewer", listingId);
+
+    const hidden = getUserArchivedActiveListings("DbHiddenViewer", "give");
+    expect(hidden.some((l) => l.id === listingId)).toBe(true);
+    expect(getUserArchivedActiveListings("DbHiddenViewer", "get").some((l) => l.id === listingId)).toBe(false);
+  });
+
   test("archived listing hidden from browse feed", async () => {
     const creator = await devAs("ArchiveCreator");
     const viewer = await devAs("ArchiveViewer");
     const title = `Hidden item ${Date.now()}`;
-    await postListing(creator, title);
+    const listingId = await postListing(creator, title);
 
     const before = await app.request(`${base}/`, { headers: { cookie: viewer } });
-    expect(await before.text()).toContain(title);
-
-    const board = await app.request(`${base}/`, { headers: { cookie: viewer } });
-    const html = await board.text();
-    const idMatch = html.match(new RegExp(`href="#l-(\\d+)"[^>]*>${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-    const listingId = Number(idMatch?.[1]);
-    expect(listingId).toBeGreaterThan(0);
+    expect(boardPanelHtml(await before.text())).toContain(title);
 
     archiveListing("ArchiveViewer", listingId);
     const after = await app.request(`${base}/`, { headers: { cookie: viewer } });
-    expect(await after.text()).not.toContain(title);
+    expect(boardPanelHtml(await after.text())).not.toContain(title);
+  });
+
+  test("hidden feed shows archived listings with restore", async () => {
+    const creator = await devAs("HiddenFeedCreator");
+    const viewer = await devAs("HiddenFeedViewer");
+    const title = `Hidden feed item ${Date.now()}`;
+    const listingId = await postListing(creator, title);
+
+    archiveListing("HiddenFeedViewer", listingId);
+
+    const board = await app.request(`${base}/`, { headers: { cookie: viewer } });
+    const html = await board.text();
+    expect(boardPanelHtml(html)).not.toContain(title);
+
+    const hidden = await app.request(`${base}/?hidden=1`, { headers: { cookie: viewer } });
+    const hiddenHtml = await hidden.text();
+    expect(hiddenHtml).toContain(title);
+    expect(hiddenHtml).toContain('id="scope-hidden"');
+    expect(hiddenHtml).toContain("listing-restore");
+    expect(hiddenHtml).toContain(`action="/l/${listingId}/unarchive"`);
+    expect(hiddenHtml).toContain("Restore");
+  });
+
+  test("browse has Board and Hidden toggle", async () => {
+    const viewer = await devAs("ToggleViewer");
+    const board = await app.request(`${base}/`, { headers: { cookie: viewer } });
+    const html = await board.text();
+    expect(html).toContain('for="scope-board"');
+    expect(html).toContain('for="scope-hidden"');
+    expect(html).toContain("board-scope");
   });
 
   test("unarchive restores listing to browse", async () => {
@@ -94,14 +145,14 @@ describe("browse archive + new border logic", () => {
 
     archiveListing("UnarchiveViewer", listingId);
     const hidden = await app.request(`${base}/`, { headers: { cookie: viewer } });
-    expect(await hidden.text()).not.toContain(title);
+    expect(boardPanelHtml(await hidden.text())).not.toContain(title);
 
     unarchiveListing("UnarchiveViewer", listingId);
     const restored = await app.request(`${base}/`, { headers: { cookie: viewer } });
-    expect(await restored.text()).toContain(title);
+    expect(boardPanelHtml(await restored.text())).toContain(title);
   });
 
-  test("POST archive route hides listing", async () => {
+  test("POST archive route hides listing via JSON fetch", async () => {
     const creator = await devAs("RouteArchiveCreator");
     const viewer = await devAs("RouteArchiveViewer");
     const title = `Route archive ${Date.now()}`;
@@ -111,32 +162,42 @@ describe("browse archive + new border logic", () => {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
+        accept: "application/json",
         ...csrfHeaders(base),
         cookie: viewer,
         referer: `${base}/`,
       },
-      redirect: "manual",
     });
-    expect(archive.status).toBe(302);
-    expect(archive.headers.get("location")).toContain(`archived=${listingId}`);
+    expect(archive.status).toBe(200);
+    const body = await archive.json();
+    expect(body).toEqual({ ok: true, id: listingId });
 
     const board = await app.request(`${base}/`, { headers: { cookie: viewer } });
-    expect(await board.text()).not.toContain(title);
+    expect(boardPanelHtml(await board.text())).not.toContain(title);
   });
 
-  test("archived query shows undo toast on browse", async () => {
-    const creator = await devAs("ToastArchiveCreator");
-    const viewer = await devAs("ToastArchiveViewer");
-    const title = `Toast archive ${Date.now()}`;
+  test("POST unarchive route restores via JSON fetch", async () => {
+    const creator = await devAs("JsonUnarchiveCreator");
+    const viewer = await devAs("JsonUnarchiveViewer");
+    const title = `Json restore ${Date.now()}`;
     const listingId = await postListing(creator, title);
 
-    archiveListing("ToastArchiveViewer", listingId);
+    archiveListing("JsonUnarchiveViewer", listingId);
 
-    const board = await app.request(`${base}/?archived=${listingId}`, { headers: { cookie: viewer } });
-    const html = await board.text();
-    expect(html).toContain("gg-toast--undo");
-    expect(html).toContain(`data-listing-id="${listingId}"`);
-    expect(html).toContain("/me/archived");
+    const res = await app.request(`${base}/l/${listingId}/unarchive`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        accept: "application/json",
+        ...csrfHeaders(base),
+        cookie: viewer,
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, id: listingId });
+
+    const board = await app.request(`${base}/`, { headers: { cookie: viewer } });
+    expect(boardPanelHtml(await board.text())).toContain(title);
   });
 
   test("new border shown for listings since last board visit", async () => {
@@ -170,30 +231,28 @@ describe("browse archive + new border logic", () => {
     expect(newCards.length).toBe(0);
   });
 
-  test("archived page is a dedicated route with restore", async () => {
-    const creator = await devAs("ArchivedPageCreator");
-    const viewer = await devAs("ArchivedPageViewer");
-    const title = `Archived page item ${Date.now()}`;
+  test("/me/archived redirects to hidden browse tab", async () => {
+    const creator = await devAs("ArchivedRedirectCreator");
+    const viewer = await devAs("ArchivedRedirectViewer");
+    const title = `Archived redirect ${Date.now()}`;
     const listingId = await postListing(creator, title);
 
-    archiveListing("ArchivedPageViewer", listingId);
+    archiveListing("ArchivedRedirectViewer", listingId);
 
-    const page = await app.request(`${base}/me/archived`, { headers: { cookie: viewer } });
-    expect(page.status).toBe(200);
-    const html = await page.text();
-    expect(html).toContain("Archived from browse");
-    expect(html).toContain(title);
-    expect(html).toContain(`action="/l/${listingId}/unarchive"`);
-    expect(html).toContain("is-active");
-    expect(html).toContain('href="/me"');
+    const page = await app.request(`${base}/me/archived`, {
+      headers: { cookie: viewer },
+      redirect: "manual",
+    });
+    expect(page.status).toBe(302);
+    expect(page.headers.get("location")).toBe("/?hidden=1");
   });
 
-  test("profile page highlights profile nav and menu", async () => {
+  test("profile page links to hidden browse tab", async () => {
     const viewer = await devAs("ProfileNavViewer");
     const me = await app.request(`${base}/me`, { headers: { cookie: viewer } });
     const html = await me.text();
     expect(html).toContain('href="/me" class="is-active"');
-    expect(html).toContain('href="/me/archived"');
+    expect(html).toContain('href="/?hidden=1"');
     expect(html).not.toContain('id="archived"');
   });
 });

@@ -52,7 +52,6 @@ export function layout(opts: {
   body: string;
   flash?: string;
   welcomeName?: string;
-  archiveUndoId?: number;
   theme?: Theme;
   activeNav?: "browse" | "profile" | "coord" | "about";
   activeMenu?: "profile" | "archived";
@@ -86,7 +85,7 @@ export function layout(opts: {
             <a class="gg-icon-btn" href="/toggle-theme" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</a>
           </div>
           <a href="/me" class="gg-menu__item${opts.activeMenu === "profile" ? " is-active" : ""}">Your profile</a>
-          <a href="/me/archived" class="gg-menu__item${opts.activeMenu === "archived" ? " is-active" : ""}">Archived from browse</a>
+          <a href="/?hidden=1" class="gg-menu__item${opts.activeMenu === "archived" ? " is-active" : ""}">Hidden from browse</a>
           ${isCoord ? raw(`<a href="/coord" class="gg-menu__item">Coordinator panel</a>`) : ""}
           <form method="post" action="/logout">
             <button type="submit" class="gg-menu__btn">Sign out</button>
@@ -184,12 +183,8 @@ export function layout(opts: {
   ${aboutModalHtml()}
 </div>
 ${opts.welcomeName ? `<div class="gg-toast" role="status">Welcome, <strong>${esc(opts.welcomeName)}</strong></div>` : ""}
-${opts.archiveUndoId ? `<div class="gg-toast gg-toast--undo" role="status" data-listing-id="${opts.archiveUndoId}">
-  <span>Archived · <a href="/me/archived">see archived</a></span>
-  <button type="button" class="gg-toast__undo">Undo</button>
-</div>` : ""}
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(()=>{})}</script>
-${opts.activeNav === "browse" ? '<script src="/card-swipe.js?v=2" defer></script>' : ""}
+${opts.activeNav === "browse" ? '<script src="/card-swipe.js?v=3" defer></script>' : ""}
 </body>
 </html>`;
 }
@@ -316,6 +311,7 @@ export function listingCard(
     viewer?: User | null;
     isNew?: boolean;
     swipeArchive?: boolean;
+    restoreAction?: boolean;
   } = {}
 ): Raw {
   const cat = CATEGORIES.find((c) => c.key === l.category)?.label ?? l.category;
@@ -346,10 +342,21 @@ export function listingCard(
     </article>
   `;
 
+  if (opts.restoreAction) {
+    return raw(html`
+      <div class="listing-restore" data-listing-id="${l.id}" data-listing-type="${l.type}">
+        ${raw(cardInner)}
+        <form method="post" action="/l/${l.id}/unarchive" class="listing-restore__form">
+          <button type="submit" class="listing-restore__btn">Restore</button>
+        </form>
+      </div>
+    `);
+  }
+
   if (!opts.swipeArchive) return raw(cardInner);
 
   return raw(html`
-    <div class="listing-swipe" data-listing-id="${l.id}">
+    <div class="listing-swipe" data-listing-id="${l.id}" data-listing-type="${l.type}">
       <div class="listing-swipe__action" aria-hidden="true">
         <span class="listing-swipe__label">Hide</span>
       </div>
