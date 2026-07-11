@@ -108,6 +108,28 @@ CREATE INDEX IF NOT EXISTS idx_messages_claim      ON messages(claim_id, created
   db.exec("CREATE INDEX IF NOT EXISTS idx_users_last_ip   ON users(last_ip)");
 }
 
+// Migration: WebAuthn passkeys for admin device auth. Idempotent.
+db.exec(`
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
+  credential_id TEXT PRIMARY KEY,
+  nickname TEXT NOT NULL REFERENCES users(nickname) ON DELETE CASCADE,
+  public_key BLOB NOT NULL,
+  counter INTEGER NOT NULL DEFAULT 0,
+  device_label TEXT,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_webauthn_nickname ON webauthn_credentials(nickname);
+`);
+
+export interface WebAuthnCredential {
+  credential_id: string;
+  nickname: string;
+  public_key: Buffer;
+  counter: number;
+  device_label: string | null;
+  created_at: number;
+}
+
 export const CATEGORIES = [
   { key: "tools", label: "Tools" },
   { key: "food", label: "Food" },
@@ -578,6 +600,53 @@ export function grantGoodwill(coordinator: string, recipient: string, reason: st
     stmtIncGiven.run(recipient);
   });
   tx();
+}
+
+// ---------- WebAuthn credentials ----------
+
+const stmtWebAuthnByNick = db.query<WebAuthnCredential, [string]>(
+  "SELECT credential_id, nickname, public_key, counter, device_label, created_at FROM webauthn_credentials WHERE nickname = ? ORDER BY created_at DESC"
+);
+const stmtWebAuthnById = db.query<WebAuthnCredential, [string]>(
+  "SELECT credential_id, nickname, public_key, counter, device_label, created_at FROM webauthn_credentials WHERE credential_id = ?"
+);
+const stmtWebAuthnCount = db.query<{ n: number }, [string]>(
+  "SELECT COUNT(*) AS n FROM webauthn_credentials WHERE nickname = ?"
+);
+
+export function getWebAuthnCredentials(nickname: string): WebAuthnCredential[] {
+  return stmtWebAuthnByNick.all(nickname);
+}
+
+export function getWebAuthnCredentialById(credentialId: string): WebAuthnCredential | null {
+  return stmtWebAuthnById.get(credentialId) ?? null;
+}
+
+export function countWebAuthnCredentials(nickname: string): number {
+  return stmtWebAuthnCount.get(nickname)?.n ?? 0;
+}
+
+export function saveWebAuthnCredential(opts: {
+  credentialId: string;
+  nickname: string;
+  publicKey: Buffer;
+  counter: number;
+  deviceLabel?: string;
+}): void {
+  db.query(
+    "INSERT INTO webauthn_credentials (credential_id, nickname, public_key, counter, device_label, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(
+    opts.credentialId,
+    opts.nickname,
+    opts.publicKey,
+    opts.counter,
+    opts.deviceLabel ?? null,
+    now()
+  );
+}
+
+export function updateWebAuthnCounter(credentialId: string, counter: number): void {
+  db.query("UPDATE webauthn_credentials SET counter = ? WHERE credential_id = ?").run(counter, credentialId);
 }
 
 // ---------- Rate limits ----------

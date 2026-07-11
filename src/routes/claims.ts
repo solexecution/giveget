@@ -15,6 +15,7 @@ import {
   recordAgreement,
   recordConfirmation,
 } from "../db";
+import { getCoordNavVisible } from "../device-auth";
 import { getTheme, HttpError, requireUser } from "../session";
 import {
   errorPage,
@@ -210,7 +211,7 @@ claimRoutes.get("/c/:id", (c) => {
     ${raw(messageForm)}
   `;
 
-  return c.html(layout({ title: `Thread · ${listing.title}`, user, body, theme: getTheme(c) }));
+  return c.html(layout({ title: `Thread · ${listing.title}`, user, body, theme: getTheme(c), coordNavVisible: getCoordNavVisible(c, user) }));
 });
 
 // ---------- POST /c/:id/message ----------

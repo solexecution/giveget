@@ -55,8 +55,9 @@ export function layout(opts: {
   theme?: Theme;
   activeNav?: "browse" | "profile" | "coord" | "about";
   filterBlade?: { activeKey: string | null; chips: string };
+  coordNavVisible?: boolean;
 }): string {
-  const isCoord = !!opts.user?.is_coordinator;
+  const isCoord = opts.coordNavVisible ?? !!opts.user?.is_coordinator;
   const themeLabel = opts.theme === "light" ? "Switch to dark mode" : "Switch to light mode";
   const sunSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>`;
   const moonSvg = `<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>`;

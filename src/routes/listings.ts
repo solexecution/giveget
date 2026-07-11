@@ -18,6 +18,7 @@ import {
   RATE_LIMITS,
   updateListingFields,
 } from "../db";
+import { getCoordNavVisible } from "../device-auth";
 import { getCurrentUser, getTheme, HttpError, requireUser } from "../session";
 import {
   categoryChips,
@@ -120,6 +121,7 @@ browseRoute.get("/", (c) => {
     theme: getTheme(c),
     activeNav: "browse",
     filterBlade: { activeKey: validCat, chips: categoryChips(validCat, "give").__raw },
+    coordNavVisible: getCoordNavVisible(c, user),
   }));
 });
 
@@ -236,7 +238,7 @@ newListingRoutes.get("/new", (c) => {
     </article>
   `;
 
-  return c.html(layout({ title: "New listing", user, body, theme: getTheme(c) }));
+  return c.html(layout({ title: "New listing", user, body, theme: getTheme(c), coordNavVisible: getCoordNavVisible(c, user) }));
 });
 
 newListingRoutes.post("/new", async (c) => {
@@ -541,5 +543,5 @@ listingDetailRoute.get("/l/:id", (c) => {
     showBackLink: true,
   });
 
-  return c.html(layout({ title: listing.title, user, body, theme: getTheme(c) }));
+  return c.html(layout({ title: listing.title, user, body, theme: getTheme(c), coordNavVisible: getCoordNavVisible(c, user) }));
 });

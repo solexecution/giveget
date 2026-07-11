@@ -12,7 +12,8 @@ import {
   unvouchUser,
   vouchUser,
 } from "../db";
-import { getTheme, HttpError, requireCoordinator } from "../session";
+import { getCoordNavVisible, requireCoordinatorDevice } from "../device-auth";
+import { getTheme, HttpError } from "../session";
 import {
   esc,
   html,
@@ -28,7 +29,7 @@ export const coordRoutes = new Hono();
 // ---------- GET /coord ----------
 
 coordRoutes.get("/coord", (c) => {
-  const user = requireCoordinator(c);
+  const user = requireCoordinatorDevice(c);
 
   const flags = getImbalanceFlags();
   const users = allUsers();
@@ -145,13 +146,20 @@ coordRoutes.get("/coord", (c) => {
     ${raw(renderListingModals([...activeGives, ...activeGets], user))}
   `;
 
-  return c.html(layout({ title: "Coordinator", user, body, theme: getTheme(c), activeNav: "coord" }));
+  return c.html(layout({
+    title: "Coordinator",
+    user,
+    body,
+    theme: getTheme(c),
+    activeNav: "coord",
+    coordNavVisible: getCoordNavVisible(c, user),
+  }));
 });
 
 // ---------- POST /coord/vouch/:nickname ----------
 
 coordRoutes.post("/coord/vouch/:nickname", (c) => {
-  const user = requireCoordinator(c);
+  const user = requireCoordinatorDevice(c);
   const target = c.req.param("nickname");
   if (target === user.nickname) throw new HttpError(400, "Coordinators vouch themselves automatically.");
   const u = getUserByNickname(target);
@@ -164,7 +172,7 @@ coordRoutes.post("/coord/vouch/:nickname", (c) => {
 // ---------- POST /coord/unvouch/:nickname ----------
 
 coordRoutes.post("/coord/unvouch/:nickname", (c) => {
-  const user = requireCoordinator(c);
+  const user = requireCoordinatorDevice(c);
   const target = c.req.param("nickname");
   if (target === user.nickname) throw new HttpError(400, "Can't unvouch yourself.");
   const u = getUserByNickname(target);
@@ -176,7 +184,7 @@ coordRoutes.post("/coord/unvouch/:nickname", (c) => {
 // ---------- POST /coord/goodwill/:nickname ----------
 
 coordRoutes.post("/coord/goodwill/:nickname", async (c) => {
-  const user = requireCoordinator(c);
+  const user = requireCoordinatorDevice(c);
   const target = c.req.param("nickname");
   if (target === user.nickname) throw new HttpError(400, "Coordinators don't grant goodwill to themselves.");
   const u = getUserByNickname(target);
@@ -195,7 +203,7 @@ coordRoutes.post("/coord/goodwill/:nickname", async (c) => {
 // ---------- POST /coord/delete-listing/:id ----------
 
 coordRoutes.post("/coord/delete-listing/:id", (c) => {
-  requireCoordinator(c);
+  requireCoordinatorDevice(c);
   const id = Number(c.req.param("id"));
   if (!Number.isInteger(id) || id < 1) throw new HttpError(400, "Bad id.");
   const l = getListingById(id);

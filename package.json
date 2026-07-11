@@ -10,6 +10,7 @@
     "expire": "bun run src/jobs/expire.ts"
   },
   "dependencies": {
+    "@simplewebauthn/server": "^13.1.1",
     "hono": "^4.6.0",
     "@picocss/pico": "^2.0.6",
     "sharp": "^0.33.5"

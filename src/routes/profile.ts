@@ -11,6 +11,7 @@ import {
   type Claim,
   type Listing,
 } from "../db";
+import { canUseCoordinatorPowers, getCoordNavVisible } from "../device-auth";
 import {
   getTheme,
   HttpError,
@@ -145,7 +146,7 @@ profileRoutes.get("/me", (c) => {
     ))}
   `;
 
-  return c.html(layout({ title: "My profile", user, body, theme: getTheme(c), activeNav: "profile" }));
+  return c.html(layout({ title: "My profile", user, body, theme: getTheme(c), activeNav: "profile", coordNavVisible: getCoordNavVisible(c, user) }));
 });
 
 // ---------- POST /me (update optional fields) ----------
@@ -214,8 +215,9 @@ profileRoutes.get("/u/:nickname", (c) => {
     : html`<p><span class="badge new">new — unvouched</span></p>`;
 
   // Coordinator-only vouch button on other profiles (not on self)
+  const coordPowers = canUseCoordinatorPowers(c, viewer);
   const vouchButton =
-    viewer.is_coordinator && viewer.nickname !== u.nickname
+    coordPowers && viewer.nickname !== u.nickname
       ? u.is_vouched
         ? html`
             <form method="post" action="/coord/unvouch/${u.nickname}">
@@ -230,7 +232,7 @@ profileRoutes.get("/u/:nickname", (c) => {
       : "";
 
   const goodwillForm =
-    viewer.is_coordinator && viewer.nickname !== u.nickname
+    coordPowers && viewer.nickname !== u.nickname
       ? html`
           <details class="action">
             <summary><strong>Grant goodwill +1 to ${u.nickname}</strong></summary>
@@ -266,5 +268,5 @@ profileRoutes.get("/u/:nickname", (c) => {
     ${raw(renderListingModals(activeListings, viewer))}
   `;
 
-  return c.html(layout({ title: u.nickname, user: viewer, body, theme: getTheme(c) }));
+  return c.html(layout({ title: u.nickname, user: viewer, body, theme: getTheme(c), coordNavVisible: getCoordNavVisible(c, viewer) }));
 });

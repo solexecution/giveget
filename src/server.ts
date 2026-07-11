@@ -33,6 +33,7 @@ import { browseRoute, newListingRoutes, listingDetailRoute } from "./routes/list
 import { claimRoutes } from "./routes/claims";
 import { profileRoutes } from "./routes/profile";
 import { coordRoutes } from "./routes/coord";
+import { getCoordNavVisible } from "./device-auth";
 
 const app = new Hono();
 
@@ -123,7 +124,14 @@ app.get("/about", (c) => {
       </p>
     </article>
   `;
-  return c.html(layout({ title: "How it works", user, body, theme: getTheme(c), activeNav: "about" }));
+  return c.html(layout({
+    title: "How it works",
+    user,
+    body,
+    theme: getTheme(c),
+    activeNav: "about",
+    coordNavVisible: getCoordNavVisible(c, user),
+  }));
 });
 
 // --- Auth ---
@@ -223,6 +231,7 @@ app.route("/", newListingRoutes);
 app.route("/", listingDetailRoute);
 app.route("/", claimRoutes);
 app.route("/", profileRoutes);
+app.route("/", deviceAuthRoutes);
 app.route("/", coordRoutes);
 
 // --- 404 + error handling ---
@@ -239,8 +248,12 @@ app.onError((err, c) => {
   const user = getCurrentUser(c);
   const theme = getTheme(c);
   if (err instanceof HttpError) {
+    const hint =
+      err.status === 403 && err.message.includes("/auth/device")
+        ? raw(html`<p class="gg-error__hint"><a href="/auth/device">Unlock with passkey</a></p>`)
+        : undefined;
     return c.html(
-      errorPage({ user, status: err.status, message: err.message, theme }),
+      errorPage({ user, status: err.status, message: err.message, hint, theme }),
       err.status as 400 | 401 | 403 | 404 | 500
     );
   }

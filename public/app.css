@@ -310,6 +310,48 @@ label { display: block; font-weight: 500; margin-bottom: .35rem; font-size: .9re
   font-weight: 600;
 }
 
+.gg-device-auth {
+  max-width: 28rem;
+  margin: 2rem auto;
+}
+.gg-device-auth__status {
+  font-weight: 600;
+  color: var(--gg-text);
+}
+.gg-device-auth__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 1rem 0;
+}
+.gg-device-auth__msg {
+  min-height: 1.25rem;
+  color: var(--gg-primary);
+  font-size: 0.92rem;
+}
+.gg-device-auth__hint {
+  margin-top: 1rem;
+  color: var(--gg-muted);
+}
+.gg-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: var(--gg-radius);
+  border: 1px solid var(--gg-border);
+  background: var(--gg-surface-2);
+  color: var(--gg-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.gg-btn-secondary:hover {
+  background: var(--gg-chip-bg);
+}
+
 .gg-article ul {
   margin: 0.35rem 0 0;
   padding-left: 1rem;
