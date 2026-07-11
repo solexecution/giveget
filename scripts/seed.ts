@@ -1,5 +1,5 @@
 /**
- * Wipe and seed myVillage with realistic example data.
+ * Wipe and seed Town Ranch with realistic example data.
  *   bun run scripts/seed.ts
  *
  * After this you can log in as ANY nickname below by visiting the home page
@@ -45,7 +45,7 @@ interface SeedUser {
 }
 
 const users: SeedUser[] = [
-  { nickname: "Maros",        coord: true,  vouched: true,  given: 0, received: 0, joinedDaysAgo: 45, bio: "Village coordinator. New here? Knock on door 14." },
+  { nickname: "Maros",        coord: true,  vouched: true,  given: 0, received: 0, joinedDaysAgo: 45, bio: "Town Ranch coordinator. New here? Knock on door 14." },
   { nickname: "Maria_baker",  coord: false, vouched: true,  given: 2, received: 0, joinedDaysAgo: 40, bio: "Bake too much most weekends. Eggs from our chickens." },
   { nickname: "Pavel",        coord: false, vouched: true,  given: 1, received: 0, joinedDaysAgo: 38, bio: null },
   { nickname: "Eva_jardin",   coord: false, vouched: true,  given: 1, received: 1, joinedDaysAgo: 35, bio: "Garden behind the church. Plenty most of the year." },
@@ -116,7 +116,7 @@ const active: SeedListing[] = [
   { type: "get", category: "tools", title: "Need a ladder for one afternoon", description: "Light bulb on a high ceiling. Can return same day.", creator: "Jan", daysAgo: 0 },
   { type: "get", category: "food", title: "Tomato seedlings — any variety", description: "Planting next week. Even a few would help.", creator: "Sofia", daysAgo: 1 },
   { type: "get", category: "services", title: "Help moving a fridge on Saturday", description: "About 100m, two people enough. Will provide beer and lunch.", creator: "Pedro", daysAgo: 0 },
-  { type: "get", category: "services", title: "Dog-sitter for Bori, Sat-Sun", description: "Golden retriever, very well behaved, sleeps a lot. Anywhere in the village works.", creator: "Eva_jardin", daysAgo: 2 },
+  { type: "get", category: "services", title: "Dog-sitter for Bori, Sat-Sun", description: "Golden retriever, very well behaved, sleeps a lot. Anywhere in town ranch works.", creator: "Eva_jardin", daysAgo: 2 },
 ];
 
 const insListing = db.prepare(`

@@ -2,7 +2,7 @@
   "name": "giveget-v0",
   "version": "0.0.1",
   "private": true,
-  "description": "GiveGet v0 — pre-MVP barter platform for one village. Bun + Hono + SQLite + plain HTML + Pico.css.",
+  "description": "GiveGet v0 — pre-MVP barter platform for Town Ranch. Bun + Hono + SQLite + plain HTML.",
   "type": "module",
   "scripts": {
     "dev": "bun --watch run src/server.ts",

@@ -86,7 +86,7 @@ browseRoute.get("/", (c) => {
   });
 
   const body = html`
-    <h2 class="gg-page-title">Village board</h2>
+    <h2 class="gg-page-title">Town Ranch board</h2>
     <p class="gg-page-sub">Give what you have · Get what you need</p>
     <div class="feed-tabs">
       <input type="radio" name="feed-tab" id="tab-give" class="feed-tabs__radios" checked>

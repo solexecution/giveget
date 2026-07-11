@@ -92,7 +92,7 @@ app.get("/about", (c) => {
     <article class="gg-article">
       <h2>How GiveGet works</h2>
       <p>
-        GiveGet is a barter platform for one village. You post things you want to <strong>give</strong>
+        GiveGet is a barter platform for Town Ranch. You post things you want to <strong>give</strong>
         (something you have, a service you can do) or things you want to <strong>get</strong>
         (something you need). The exchange happens between neighbours, in person, without money
         passing through this page.
@@ -101,8 +101,8 @@ app.get("/about", (c) => {
       <p>
         Every time you give something, your <strong>Given</strong> count goes up by one.
         Every time you receive, your <strong>Received</strong> count goes up by one. Both
-        counts are visible on your profile and on every listing you create. Anyone in the
-        village can see them.
+        counts are visible on your profile and on every listing you create. Anyone in Town Ranch
+        can see them.
       </p>
       <p>
         There are no points, no money, no spendable tokens — just a count of times you
@@ -111,7 +111,7 @@ app.get("/about", (c) => {
       </p>
       <h3>Trust</h3>
       <p>
-        New members are <em>unvouched</em>. A village coordinator vouches you after meeting
+        New members are <em>unvouched</em>. A Town Ranch coordinator vouches you after meeting
         you. Vouching is the trust signal. The tally tells you who's active; the vouch tells
         you who's known.
       </p>

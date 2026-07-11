@@ -152,7 +152,7 @@ export function layout(opts: {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GiveGet">
-<meta name="description" content="Village barter board — give, get, and swap with neighbours.">
+<meta name="description" content="Town Ranch barter board — give, get, and swap with neighbours.">
 <title>${esc(opts.title)} — GiveGet</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -189,7 +189,7 @@ export function signupCard(): string {
   return html`
     <div class="gg-signup-wrap">
       <article class="gg-signup-card">
-        <h2>Join the village</h2>
+        <h2>Join Town Ranch</h2>
         <p>See what neighbours are giving and what they need. Pick a nickname — no email or phone required.</p>
         <form method="post" action="/signup">
           <input type="text" name="nickname" placeholder="your nickname"

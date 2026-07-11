@@ -1,6 +1,6 @@
 # GiveGet v0
 
-Pre-MVP barter platform for one village. Single self-hosted web page, zero external user dependencies.
+Pre-MVP barter platform for Town Ranch. Single self-hosted web page, zero external user dependencies.
 
 ## Stack
 

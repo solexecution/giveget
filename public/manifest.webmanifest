@@ -1,7 +1,7 @@
 {
   "name": "GiveGet",
   "short_name": "GiveGet",
-  "description": "Village barter board — give, get, and swap with neighbours.",
+  "description": "Town Ranch barter board — give, get, and swap with neighbours.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
