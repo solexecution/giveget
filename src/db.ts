@@ -233,6 +233,14 @@ export function nicknameExists(nickname: string): boolean {
   return stmtNicknameExists.get(nickname) != null;
 }
 
+/** Same nickname ignoring case — catches maros vs Maros confusion. */
+export function findExistingNicknameIgnoreCase(nickname: string): string | null {
+  const row = db
+    .query("SELECT nickname FROM users WHERE lower(nickname) = lower(?)")
+    .get(nickname) as { nickname: string } | null;
+  return row?.nickname ?? null;
+}
+
 export function createUser(
   nickname: string,
   sessionToken: string,

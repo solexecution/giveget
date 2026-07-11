@@ -9,6 +9,7 @@ import {
   createUser,
   expireOldListings,
   getUserByNickname,
+  findExistingNicknameIgnoreCase,
   nicknameExists,
   RATE_LIMITS,
   touchUserDevice,
@@ -25,7 +26,7 @@ import {
   setTheme,
   toggleTheme,
 } from "./session";
-import { errorPage, esc, html, layout } from "./views";
+import { errorPage, esc, html, layout, raw } from "./views";
 import { photoExists, photoPath } from "./images";
 
 import { browseRoute, newListingRoutes, listingDetailRoute } from "./routes/listings";
@@ -144,12 +145,27 @@ app.post("/signup", async (c) => {
     );
   }
 
-  if (nicknameExists(nickname)) {
+  const existingNick = findExistingNicknameIgnoreCase(nickname);
+  if (existingNick) {
+    const hint =
+      process.env.DEV_LOGIN === "1"
+        ? raw(
+            html`<p class="gg-error__hint">Demo account? <a href="/dev-as/${esc(existingNick)}">Sign in as ${esc(existingNick)}</a></p>`
+          )
+        : existingNick !== nickname
+          ? raw(
+              html`<p class="gg-error__hint">That nickname exists as <strong>${esc(existingNick)}</strong> — nicknames are case-sensitive.</p>`
+            )
+          : undefined;
+    const message = nicknameExists(nickname)
+      ? `"${nickname}" is taken. Try another.`
+      : `"${nickname}" matches an existing nickname.`;
     return c.html(
       errorPage({
         user: null,
         status: 409,
-        message: `"${nickname}" is taken. Try another.`,
+        message,
+        hint,
         theme: getTheme(c),
       }),
       409

@@ -101,7 +101,7 @@ export function layout(opts: {
         <div class="gg-header__actions">
           <a class="gg-icon-btn nav-desktop-only" href="/about" aria-label="How it works">?</a>
           <form method="post" action="/toggle-theme">
-            <button type="submit" class="gg-icon-btn" aria-label="${themeLabel}" title="${themeLabel}">${themeIcon}</button>
+            <button type="submit" class="gg-icon-btn" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</button>
           </form>
         </div>
       `;
@@ -285,6 +285,7 @@ export function errorPage(opts: {
   user: User | null;
   status: number;
   message: string;
+  hint?: Raw;
   theme?: Theme;
 }): string {
   return layout({
@@ -292,9 +293,10 @@ export function errorPage(opts: {
     user: opts.user,
     theme: opts.theme,
     body: html`
-      <article>
+      <article class="gg-article gg-error">
         <h2>${opts.status}</h2>
         <p>${opts.message}</p>
+        ${opts.hint ?? ""}
         <p><a href="/">← back to browse</a></p>
       </article>
     `,
