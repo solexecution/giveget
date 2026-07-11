@@ -33,6 +33,7 @@ import { browseRoute, newListingRoutes, listingDetailRoute } from "./routes/list
 import { claimRoutes } from "./routes/claims";
 import { profileRoutes } from "./routes/profile";
 import { coordRoutes } from "./routes/coord";
+import { deviceAuthRoutes } from "./routes/device-auth";
 import { getCoordNavVisible } from "./device-auth";
 
 const app = new Hono();
