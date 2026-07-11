@@ -1,4 +1,4 @@
-const CACHE = "giveget-shell-v4";
+const CACHE = "giveget-shell-v5";
 const PRECACHE = ["/app.css", "/icon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

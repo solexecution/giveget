@@ -103,10 +103,22 @@ CREATE INDEX IF NOT EXISTS idx_messages_claim      ON messages(claim_id, created
   if (!names.has("signup_user_agent")) db.exec("ALTER TABLE users ADD COLUMN signup_user_agent TEXT");
   if (!names.has("last_ip"))           db.exec("ALTER TABLE users ADD COLUMN last_ip TEXT");
   if (!names.has("last_user_agent"))   db.exec("ALTER TABLE users ADD COLUMN last_user_agent TEXT");
-  if (!names.has("last_seen_at"))      db.exec("ALTER TABLE users ADD COLUMN last_seen_at INTEGER");
+  if (!names.has("last_seen_at"))       db.exec("ALTER TABLE users ADD COLUMN last_seen_at INTEGER");
+  if (!names.has("last_board_seen_at")) db.exec("ALTER TABLE users ADD COLUMN last_board_seen_at INTEGER");
   db.exec("CREATE INDEX IF NOT EXISTS idx_users_signup_ip ON users(signup_ip)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_users_last_ip   ON users(last_ip)");
 }
+
+// Migration: per-user archived (hidden) listings on browse. Idempotent.
+db.exec(`
+CREATE TABLE IF NOT EXISTS archived_listings (
+  nickname TEXT NOT NULL REFERENCES users(nickname) ON DELETE CASCADE,
+  listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  archived_at INTEGER NOT NULL,
+  PRIMARY KEY (nickname, listing_id)
+);
+CREATE INDEX IF NOT EXISTS idx_archived_listings_nickname ON archived_listings(nickname);
+`);
 
 // Migration: WebAuthn passkeys for admin device auth. Idempotent.
 db.exec(`
@@ -164,6 +176,13 @@ export interface User {
   last_ip: string | null;
   last_user_agent: string | null;
   last_seen_at: number | null;
+  last_board_seen_at: number | null;
+}
+
+export interface ArchivedListingRow {
+  nickname: string;
+  listing_id: number;
+  archived_at: number;
 }
 
 export interface Listing {
@@ -400,6 +419,56 @@ export function getActiveListings(type: ListingType, category?: CategoryKey): Li
   return category
     ? stmtActiveListingsByCategory.all(type, category)
     : stmtActiveListings.all(type);
+}
+
+const stmtArchivedIds = db.query<{ listing_id: number }, [string]>(
+  "SELECT listing_id FROM archived_listings WHERE nickname = ?"
+);
+const stmtArchiveListing = db.query<unknown, [string, number, number]>(
+  "INSERT OR IGNORE INTO archived_listings (nickname, listing_id, archived_at) VALUES (?, ?, ?)"
+);
+const stmtUnarchiveListing = db.query<unknown, [string, number]>(
+  "DELETE FROM archived_listings WHERE nickname = ? AND listing_id = ?"
+);
+const stmtArchivedRows = db.query<ArchivedListingRow, [string]>(
+  "SELECT * FROM archived_listings WHERE nickname = ? ORDER BY archived_at DESC"
+);
+const stmtMarkBoardSeen = db.query<unknown, [number, string]>(
+  "UPDATE users SET last_board_seen_at = ? WHERE nickname = ?"
+);
+
+export function getArchivedListingIds(nickname: string): number[] {
+  return stmtArchivedIds.all(nickname).map((r) => r.listing_id);
+}
+
+export function archiveListing(nickname: string, listingId: number): void {
+  stmtArchiveListing.run(nickname, listingId, now());
+}
+
+export function unarchiveListing(nickname: string, listingId: number): void {
+  stmtUnarchiveListing.run(nickname, listingId);
+}
+
+export function getArchivedListingsForUser(nickname: string): ArchivedListingRow[] {
+  return stmtArchivedRows.all(nickname);
+}
+
+export function markBoardSeen(nickname: string): void {
+  stmtMarkBoardSeen.run(now(), nickname);
+}
+
+/** Test/admin helper — set when the user last opened the browse board. */
+export function setLastBoardSeenAt(nickname: string, ts: number | null): void {
+  db.query("UPDATE users SET last_board_seen_at = ? WHERE nickname = ?").run(ts, nickname);
+}
+
+export function filterArchivedListings(listings: Listing[], archivedIds: ReadonlySet<number>): Listing[] {
+  return listings.filter((l) => !archivedIds.has(l.id));
+}
+
+export function isListingNewSinceLastVisit(createdAt: number, lastBoardSeenAt: number | null): boolean {
+  if (lastBoardSeenAt == null) return false;
+  return createdAt > lastBoardSeenAt;
 }
 
 export function getListingsByCreator(nickname: string): Listing[] {

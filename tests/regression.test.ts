@@ -87,11 +87,16 @@ describe("regression flows", () => {
     expect(html).toContain("Agree");
   });
 
-  test("about page loads when signed in", async () => {
-    const { cookie } = await signup(app, base, "AboutUser1");
-    const res = await app.request(`${base}/about`, { headers: { cookie } });
-    expect(res.status).toBe(200);
-    expect(await res.text()).toContain("How it works");
+  test("about redirect opens modal hash", async () => {
+    const { cookie } = await signup(app, base, "AboutUser2");
+    const res = await app.request(`${base}/about`, { headers: { cookie }, redirect: "manual" });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/#about");
+    const home = await app.request(`${base}/`, { headers: { cookie } });
+    const html = await home.text();
+    expect(html).toContain('id="about"');
+    expect(html).toContain("How GiveGet works");
+    expect(html).toContain('class="gg-modal__close"');
   });
 
   test("login page prefills nickname query", async () => {

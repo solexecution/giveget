@@ -6,8 +6,11 @@ import {
   type Listing,
   type ListingType,
   type User,
+  archiveListing,
   createListing,
+  filterArchivedListings,
   getActiveListings,
+  getArchivedListingIds,
   getClaimByListingAndClaimant,
   getClaimsForListing,
   getListingById,
@@ -15,7 +18,10 @@ import {
   getUserByNickname,
   addPhotoToListing,
   countListingsLast24h,
+  isListingNewSinceLastVisit,
+  markBoardSeen,
   RATE_LIMITS,
+  unarchiveListing,
   updateListingFields,
 } from "../db";
 import { getCoordNavVisible } from "../device-auth";
@@ -50,8 +56,10 @@ browseRoute.get("/", (c) => {
   const cat = url.searchParams.get("cat") as CategoryKey | null;
   const validCat = cat && CATEGORIES.some((x) => x.key === cat) ? cat : null;
 
-  const gives = getActiveListings("give", validCat ?? undefined);
-  const gets = getActiveListings("get", validCat ?? undefined);
+  const lastBoardSeenAt = user.last_board_seen_at;
+  const archivedIds = new Set(getArchivedListingIds(user.nickname));
+  const gives = filterArchivedListings(getActiveListings("give", validCat ?? undefined), archivedIds);
+  const gets = filterArchivedListings(getActiveListings("get", validCat ?? undefined), archivedIds);
   const allListings = [...gives, ...gets];
 
   // Cache creator users and photos for each listing (each used twice — once for the
@@ -74,6 +82,8 @@ browseRoute.get("/", (c) => {
             return listingCard(l, creator, photosByListing.get(l.id) ?? [], {
               hrefPrefix: "#l-",
               viewer: user,
+              isNew: isListingNewSinceLastVisit(l.created_at, lastBoardSeenAt),
+              swipeArchive: l.creator_nickname !== user.nickname,
             }).__raw;
           })
           .join("");
@@ -113,6 +123,7 @@ browseRoute.get("/", (c) => {
   `;
 
   const welcomeName = url.searchParams.has("welcome") ? user.nickname : undefined;
+  markBoardSeen(user.nickname);
   return c.html(layout({
     title: "Browse",
     user,
@@ -172,23 +183,32 @@ function listingTypeSegment(defaultType: ListingType): string {
   `;
 }
 
-export function newListingFormHtml(defaultType: ListingType = "give"): string {
-  const categoryOptions = CATEGORIES.map(
-    (cat) => html`<option value="${cat.key}">${cat.label}</option>`
-  ).join("");
+function categorySegment(defaultKey: CategoryKey = "tools"): string {
+  const chips = CATEGORIES.map((cat, i) => {
+    const id = `cat_${cat.key}`;
+    const checked = cat.key === defaultKey ? " checked" : "";
+    const required = i === 0 ? " required" : "";
+    return `
+      <div class="gg-chip">
+        <input type="radio" name="category" value="${cat.key}" id="${id}" class="gg-chip__radio"${checked}${required}>
+        <label for="${id}" class="gg-chip__label">${cat.label}</label>
+      </div>`;
+  }).join("");
 
+  return `
+    <fieldset class="gg-category-field">
+      <legend class="gg-field__label">Category</legend>
+      <div class="gg-chip-grid" role="radiogroup" aria-label="Category">
+        ${chips}
+      </div>
+    </fieldset>`;
+}
+
+export function newListingFormHtml(defaultType: ListingType = "give"): string {
   return html`
     <form method="post" action="/new" enctype="multipart/form-data" class="gg-form-stack gg-form-stack--listing">
       ${raw(listingTypeSegment(defaultType))}
-
-      <div class="gg-field">
-        <label class="gg-field__label" for="listing_category">Category</label>
-        <div class="gg-field__control gg-field__control--select">
-          <select id="listing_category" name="category" required>
-            ${raw(categoryOptions)}
-          </select>
-        </div>
-      </div>
+      ${raw(categorySegment())}
 
       <div class="gg-field">
         <label class="gg-field__label" for="listing_title">Title</label>
@@ -326,6 +346,36 @@ newListingRoutes.post("/l/:id/edit", async (c) => {
 
   updateListingFields(id, title, description, exchangeHint);
   return c.redirect(`/#l-${id}`);
+});
+
+// ---------- POST /l/:id/archive (hide from browse) ----------
+
+newListingRoutes.post("/l/:id/archive", (c) => {
+  const user = requireUser(c);
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id < 1) throw new HttpError(404, "Listing not found.");
+  const listing = getListingById(id);
+  if (!listing) throw new HttpError(404, "Listing not found.");
+  if (listing.creator_nickname === user.nickname) {
+    throw new HttpError(400, "You can't archive your own listing.");
+  }
+  if (listing.status !== "active") {
+    throw new HttpError(400, "Only active listings can be archived.");
+  }
+  archiveListing(user.nickname, id);
+  const back = c.req.header("referer") ?? "/";
+  return c.redirect(back);
+});
+
+// ---------- POST /l/:id/unarchive (restore to browse) ----------
+
+newListingRoutes.post("/l/:id/unarchive", (c) => {
+  const user = requireUser(c);
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id < 1) throw new HttpError(404, "Listing not found.");
+  unarchiveListing(user.nickname, id);
+  const back = c.req.header("referer") ?? "/me";
+  return c.redirect(back);
 });
 
 // Wraps content in the standard modal markup (.gg-modal#:id). Re-usable.

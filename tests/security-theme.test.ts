@@ -5,6 +5,38 @@ import { csrfHeaders, signup } from "./helpers.ts";
 const base = "http://localhost";
 
 describe("csrf and theme", () => {
+  test("form POST with same-origin referer passes CSRF", async () => {
+    const res = await app.request(`${base}/signup`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        referer: `${base}/`,
+      },
+      body: "nickname=RefererCsrfUser",
+      redirect: "manual",
+    });
+    expect(res.status).toBe(302);
+  });
+
+  test("login POST with referer only (mobile PWA pattern)", async () => {
+    await signup(app, base, "LoginRefererUser");
+    const hash = await Bun.password.hash("secret123", { algorithm: "bcrypt", cost: 4 });
+    const { setPasswordHash } = await import("../src/db.ts");
+    setPasswordHash("LoginRefererUser", hash);
+
+    const res = await app.request(`${base}/login`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        referer: `${base}/login`,
+      },
+      body: "nickname=LoginRefererUser&password=secret123",
+      redirect: "manual",
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/");
+  });
+
   test("bare POST without CSRF returns 403", async () => {
     const res = await app.request(`${base}/signup`, {
       method: "POST",
@@ -39,7 +71,7 @@ describe("csrf and theme", () => {
 
     const sw = await app.request(`${base}/sw.js`);
     expect(sw.status).toBe(200);
-    expect(await sw.text()).toContain("giveget-shell-v4");
+    expect(await sw.text()).toContain("giveget-shell-v5");
   });
 });
 

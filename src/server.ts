@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { readFileSync } from "node:fs";
@@ -40,8 +39,43 @@ import { getCoordNavVisible } from "./device-auth";
 
 const app = new Hono();
 
+function sameOriginReferer(c: { req: { header: (n: string) => string | undefined; url: string } }): boolean {
+  const referer = c.req.header("referer");
+  if (!referer) return false;
+  try {
+    return new URL(referer).origin === new URL(c.req.url).origin;
+  } catch {
+    return false;
+  }
+}
+
+function formPostAllowed(c: { req: { header: (n: string) => string | undefined; url: string; method: string } }): boolean {
+  const site = c.req.header("sec-fetch-site");
+  if (site === "same-origin" || site === "same-site") return true;
+  const origin = c.req.header("origin");
+  if (origin) {
+    try {
+      return origin === new URL(c.req.url).origin;
+    } catch {
+      return false;
+    }
+  }
+  return sameOriginReferer(c);
+}
+
+const formContentTypeRe = /^\b(application\/x-www-form-urlencoded|multipart\/form-data|text\/plain)\b/i;
+
 app.use("*", logger());
-app.use("*", csrf());
+app.use("*", async (c, next) => {
+  const method = c.req.method;
+  if (method !== "GET" && method !== "HEAD") {
+    const ct = c.req.header("content-type") || "text/plain";
+    if (formContentTypeRe.test(ct) && !formPostAllowed(c)) {
+      throw new HTTPException(403, { res: new Response("Forbidden", { status: 403 }) });
+    }
+  }
+  await next();
+});
 
 // Update last_ip / last_user_agent / last_seen_at on every authenticated request.
 // Pure write-through; doesn't gate the request.
@@ -91,51 +125,7 @@ app.get("/photo/:name", (c) => {
 
 // --- Static pages ---
 
-app.get("/about", (c) => {
-  const user = getCurrentUser(c);
-  const body = html`
-    <article class="gg-article">
-      <h2>How GiveGet works</h2>
-      <p>
-        GiveGet is a barter platform for Town Ranch. You post things you want to <strong>give</strong>
-        (something you have, a service you can do) or things you want to <strong>get</strong>
-        (something you need). The exchange happens between neighbours, in person, without money
-        passing through this page.
-      </p>
-      <h3>The give/get tally</h3>
-      <p>
-        Every time you give something, your <strong>Given</strong> count goes up by one.
-        Every time you receive, your <strong>Received</strong> count goes up by one. Both
-        counts are visible on your profile and on every listing you create. Anyone in Town Ranch
-        can see them.
-      </p>
-      <p>
-        There are no points, no money, no spendable tokens — just a count of times you
-        showed up for the community. The point is to keep things in motion, not to keep
-        score.
-      </p>
-      <h3>Trust</h3>
-      <p>
-        New members are <em>unvouched</em>. A Town Ranch coordinator vouches you after meeting
-        you. Vouching is the trust signal. The tally tells you who's active; the vouch tells
-        you who's known.
-      </p>
-      <h3>What you don't need</h3>
-      <p>
-        No Google account. No WhatsApp. No phone number unless you choose to add one.
-        No email unless you choose to add one. No real name. Just a nickname.
-      </p>
-    </article>
-  `;
-  return c.html(layout({
-    title: "How it works",
-    user,
-    body,
-    theme: getTheme(c),
-    activeNav: "about",
-    coordNavVisible: getCoordNavVisible(c, user),
-  }));
-});
+app.get("/about", (c) => c.redirect("/#about"));
 
 // --- Auth ---
 

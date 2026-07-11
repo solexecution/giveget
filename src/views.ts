@@ -102,7 +102,7 @@ export function layout(opts: {
       `
     : html`
         <div class="gg-header__actions">
-          <a class="gg-icon-btn nav-desktop-only" href="/about" aria-label="How it works">?</a>
+          <a class="gg-icon-btn nav-desktop-only" href="/#about" aria-label="How it works">?</a>
           <a class="gg-icon-btn" href="/toggle-theme" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</a>
         </div>
       `;
@@ -115,7 +115,7 @@ export function layout(opts: {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l7 4v6c0 4-3 7-7 8-4-1-7-4-7-8V7z"/></svg>
         Coord
       </a>`
-    : `<a href="/about" class="${opts.activeNav === "about" ? "is-active" : ""}">
+    : `<a href="/#about" class="${opts.activeNav === "about" ? "is-active" : ""}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>
         About
       </a>`;
@@ -162,7 +162,7 @@ export function layout(opts: {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/app.css?v=4">
+<link rel="stylesheet" href="/app.css?v=5">
 </head>
 <body>
 <div class="gg-app">
@@ -178,6 +178,7 @@ export function layout(opts: {
     ${opts.body}
   </main>
   ${bottomNav}
+  ${aboutModalHtml()}
 </div>
 ${opts.welcomeName ? `<div class="gg-toast" role="status">Welcome, <strong>${esc(opts.welcomeName)}</strong></div>` : ""}
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(()=>{})}</script>
@@ -200,7 +201,7 @@ export function signupCard(): string {
           <button type="submit">Get started</button>
         </form>
         <small>3–30 characters · letters, numbers, underscore</small>
-        <p class="gg-signup-card__alt"><a href="/login">Already have an account? Sign in</a></p>
+        <p class="gg-signup-card__alt"><a href="/login">Already have an account? Sign in</a> · <a href="/#about">How it works</a></p>
       </article>
     </div>
   `;
@@ -224,6 +225,54 @@ export function loginCard(prefillNick?: string): string {
         <p class="gg-signup-card__alt"><a href="/">New here? Join Town Ranch</a></p>
       </article>
     </div>
+  `;
+}
+
+export function aboutContentHtml(): string {
+  return html`
+    <div class="gg-about">
+      <p>
+        GiveGet is a barter platform for Town Ranch. You post things you want to <strong>give</strong>
+        (something you have, a service you can do) or things you want to <strong>get</strong>
+        (something you need). The exchange happens between neighbours, in person, without money
+        passing through this page.
+      </p>
+      <h4>The give/get tally</h4>
+      <p>
+        Every time you give something, your <strong>Given</strong> count goes up by one.
+        Every time you receive, your <strong>Received</strong> count goes up by one. Both
+        counts are visible on your profile and on every listing you create.
+      </p>
+      <p>
+        There are no points, no money, no spendable tokens — just a count of times you
+        showed up for the community.
+      </p>
+      <h4>Trust</h4>
+      <p>
+        New members are <em>unvouched</em>. A Town Ranch coordinator vouches you after meeting
+        you. Vouching is the trust signal.
+      </p>
+      <h4>What you don't need</h4>
+      <p>
+        No Google account. No WhatsApp. No phone number unless you choose to add one.
+        No email unless you choose to add one. No real name. Just a nickname.
+      </p>
+    </div>
+  `;
+}
+
+export function aboutModalHtml(): string {
+  return html`
+    <aside class="gg-modal" id="about" aria-labelledby="about-title">
+      <a class="gg-modal__overlay" href="#" aria-label="Close" tabindex="-1"></a>
+      <div class="gg-modal__panel" role="dialog" aria-modal="true">
+        <header class="gg-modal__head">
+          <h3 id="about-title">How GiveGet works</h3>
+          <a class="gg-modal__close" href="#" aria-label="Close">×</a>
+        </header>
+        ${raw(aboutContentHtml())}
+      </div>
+    </aside>
   `;
 }
 

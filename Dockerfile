@@ -13,4 +13,4 @@ ENV GIVEGET_DB=/app/data/giveget.db
 ENV GIVEGET_PHOTOS_DIR=/app/data/photos
 
 EXPOSE 3000
-CMD ["sh", "-c", "bun run scripts/seed-if-empty.ts && bun run src/server.ts"]
+CMD ["sh", "-c", "bun run scripts/seed-if-empty.ts && bun run scripts/bootstrap-admin-password.ts && bun run src/server.ts"]
