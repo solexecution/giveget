@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
+import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,6 +13,7 @@ import {
   findExistingNicknameIgnoreCase,
   nicknameExists,
   RATE_LIMITS,
+  setSessionToken,
   touchUserDevice,
 } from "./db";
 import {
@@ -26,7 +28,7 @@ import {
   setTheme,
   toggleTheme,
 } from "./session";
-import { errorPage, esc, html, layout, raw } from "./views";
+import { errorPage, esc, html, layout, loginCard, raw } from "./views";
 import { photoExists, photoPath } from "./images";
 
 import { browseRoute, newListingRoutes, listingDetailRoute } from "./routes/listings";
@@ -159,13 +161,11 @@ app.post("/signup", async (c) => {
     const hint =
       process.env.DEV_LOGIN === "1"
         ? raw(
-            html`<p class="gg-error__hint">Demo account? <a href="/dev-as/${esc(existingNick)}">Sign in as ${esc(existingNick)}</a></p>`
+            html`<p class="gg-error__hint">Demo account? <a href="/dev-as/${esc(existingNick)}">Sign in as ${esc(existingNick)}</a> or <a href="/login?nick=${esc(existingNick)}">use password</a></p>`
           )
-        : existingNick !== nickname
-          ? raw(
-              html`<p class="gg-error__hint">That nickname exists as <strong>${esc(existingNick)}</strong> — nicknames are case-sensitive.</p>`
-            )
-          : undefined;
+        : raw(
+            html`<p class="gg-error__hint">Already joined? <a href="/login?nick=${esc(existingNick)}">Sign in with your password</a>${existingNick !== nickname ? html` — stored as <strong>${esc(existingNick)}</strong>` : ""}</p>`
+          );
     const message = nicknameExists(nickname)
       ? `"${nickname}" is taken. Try another.`
       : `"${nickname}" matches an existing nickname.`;
@@ -199,6 +199,68 @@ app.post("/signup", async (c) => {
   createUser(nickname, token, ip, getUserAgent(c));
   setSessionCookie(c, token);
   return c.redirect("/?welcome=1");
+});
+
+app.get("/login", (c) => {
+  if (getCurrentUser(c)) return c.redirect("/");
+  const nickQ = String(c.req.query("nick") ?? "").trim();
+  const prefill = nickQ ? findExistingNicknameIgnoreCase(nickQ) ?? nickQ : undefined;
+  return c.html(layout({ title: "Sign in", user: null, body: loginCard(prefill), theme: getTheme(c) }));
+});
+
+app.post("/login", async (c) => {
+  const form = await c.req.formData();
+  const nicknameInput = String(form.get("nickname") ?? "").trim();
+  const password = String(form.get("password") ?? "");
+
+  const nickname = findExistingNicknameIgnoreCase(nicknameInput);
+  if (!nickname) {
+    return c.html(
+      errorPage({
+        user: null,
+        status: 401,
+        message: "No account with that nickname.",
+        hint: raw(html`<p class="gg-error__hint"><a href="/">Join Town Ranch</a> with a new nickname.</p>`),
+        theme: getTheme(c),
+      }),
+      401
+    );
+  }
+
+  const user = getUserByNickname(nickname)!;
+  if (!user.password_hash) {
+    return c.html(
+      errorPage({
+        user: null,
+        status: 401,
+        message: `"${nickname}" has no password yet.`,
+        hint: raw(
+          html`<p class="gg-error__hint">While logged in on another device, open Profile and set a password. New here? <a href="/">Pick a different nickname</a>.</p>`
+        ),
+        theme: getTheme(c),
+      }),
+      401
+    );
+  }
+
+  const ok = await Bun.password.verify(password, user.password_hash);
+  if (!ok) {
+    return c.html(
+      errorPage({
+        user: null,
+        status: 401,
+        message: "Wrong password.",
+        hint: raw(html`<p class="gg-error__hint"><a href="/login">Try again</a></p>`),
+        theme: getTheme(c),
+      }),
+      401
+    );
+  }
+
+  const token = generateToken();
+  setSessionToken(nickname, token);
+  setSessionCookie(c, token);
+  return c.redirect("/");
 });
 
 app.post("/logout", (c) => {
@@ -258,6 +320,11 @@ app.onError((err, c) => {
       err.status as 400 | 401 | 403 | 404 | 500
     );
   }
+  if (err instanceof HTTPException) {
+    const status = err.status;
+    const message = status === 403 ? "Invalid or missing CSRF token." : err.message;
+    return c.html(errorPage({ user, status, message, theme }), status as 400 | 401 | 403 | 404 | 500);
+  }
   console.error("[unhandled]", err);
   return c.html(
     errorPage({ user, status: 500, message: "Something went wrong.", theme }),
@@ -274,6 +341,8 @@ expireOldListings();
 const port = Number(process.env.PORT ?? 3000);
 
 console.log(`GiveGet v0 listening on http://localhost:${port}`);
+
+export { app };
 
 export default {
   port,

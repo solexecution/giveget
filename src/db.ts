@@ -323,6 +323,10 @@ export function setPasswordHash(nickname: string, hash: string): void {
   stmtSetPasswordHash.run(hash, nickname);
 }
 
+export function setSessionToken(nickname: string, token: string): void {
+  db.query("UPDATE users SET session_token = ? WHERE nickname = ?").run(token, nickname);
+}
+
 export function vouchUser(target: string, voucher: string): void {
   stmtVouch.run(voucher, now(), target);
 }

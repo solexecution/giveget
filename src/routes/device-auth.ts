@@ -3,7 +3,7 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simp
 
 import { getCoordNavVisible, requireAdminForDeviceSetup, isDeviceVerified, adminHasPasskeys, clearDeviceCookie, createAuthenticationOptions, createRegistrationOptions, setDeviceCookie, verifyAuthentication, verifyRegistration } from "../device-auth";
 import { getTheme, HttpError } from "../session";
-import { esc, html, layout } from "../views";
+import { esc, html, layout, raw } from "../views";
 
 export const deviceAuthRoutes = new Hono();
 

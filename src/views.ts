@@ -200,6 +200,28 @@ export function signupCard(): string {
           <button type="submit">Get started</button>
         </form>
         <small>3–30 characters · letters, numbers, underscore</small>
+        <p class="gg-signup-card__alt"><a href="/login">Already have an account? Sign in</a></p>
+      </article>
+    </div>
+  `;
+}
+
+export function loginCard(prefillNick?: string): string {
+  const nick = prefillNick ? esc(prefillNick) : "";
+  return html`
+    <div class="gg-signup-wrap">
+      <article class="gg-signup-card">
+        <h2>Sign in</h2>
+        <p>Enter your nickname and password. Set a password from Profile while logged in on any device.</p>
+        <form method="post" action="/login" class="gg-form-stack">
+          <input type="text" name="nickname" placeholder="nickname"
+            pattern="[A-Za-z0-9_]{3,30}" required autocomplete="username"
+            maxlength="30" value="${nick}" autofocus>
+          <input type="password" name="password" placeholder="password"
+            minlength="6" maxlength="200" required autocomplete="current-password">
+          <button type="submit">Sign in</button>
+        </form>
+        <p class="gg-signup-card__alt"><a href="/">New here? Join Town Ranch</a></p>
       </article>
     </div>
   `;

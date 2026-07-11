@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "bun --watch run src/server.ts",
     "start": "bun run scripts/seed-if-empty.ts && bun run src/server.ts",
-    "expire": "bun run src/jobs/expire.ts"
+    "expire": "bun run src/jobs/expire.ts",
+    "test": "bun test --preload ./tests/preload.ts ./tests/"
   },
   "dependencies": {
     "@simplewebauthn/server": "^13.1.1",
