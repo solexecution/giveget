@@ -78,7 +78,7 @@ export function layout(opts: {
 
   const accountMenu = opts.user
     ? html`<details class="gg-menu">
-        <summary class="gg-icon-btn" aria-label="Account menu">${raw(personSvg)}</summary>
+        <summary class="gg-icon-btn" aria-label="Account menu for ${esc(opts.user.nickname)}">${raw(personSvg)}</summary>
         <div class="gg-menu__panel">
           <div class="gg-menu__head">
             <span>Signed in as <strong>${esc(opts.user.nickname)}</strong></span>
@@ -94,9 +94,14 @@ export function layout(opts: {
       </details>`
     : "";
 
+  const headerUser = opts.user
+    ? html`<a class="gg-header__user" href="/me" title="Your profile">${esc(opts.user.nickname)}</a>`
+    : "";
+
   const headerActions = opts.user
     ? html`
         <div class="gg-header__actions">
+          ${headerUser}
           <a class="gg-icon-btn gg-icon-btn--accent nav-desktop-only" href="/#new-listing" aria-label="New listing" title="New listing">+</a>
           ${filterBtn ? raw(filterBtn) : ""}
           ${accountMenu ? raw(accountMenu) : ""}
@@ -164,7 +169,7 @@ export function layout(opts: {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/app.css?v=8">
+<link rel="stylesheet" href="/app.css?v=9">
 </head>
 <body>
 <div class="gg-app">
@@ -191,16 +196,20 @@ ${opts.activeNav === "browse" ? '<script src="/card-swipe.js?v=3" defer></script
 
 // ---------- Reusable view fragments ----------
 
-export function signupCard(): string {
+export function signupCard(csrf: string): string {
   return html`
     <div class="gg-signup-wrap">
       <article class="gg-signup-card">
         <h2>Join Town Ranch</h2>
         <p>See what neighbours are giving and what they need. Pick a nickname — no email or phone required.</p>
-        <form method="post" action="/signup">
-          <input type="text" name="nickname" placeholder="your nickname"
-            pattern="[A-Za-z0-9_]{3,30}" required autocomplete="username"
-            maxlength="30" autofocus>
+        <form method="post" action="/signup" class="gg-form-stack">
+          <input type="hidden" name="_csrf" value="${esc(csrf)}">
+          <label class="gg-field">
+            <span class="gg-field__label">Nickname</span>
+            <input type="text" name="nickname" placeholder="your nickname"
+              pattern="[A-Za-z0-9_]{3,30}" required autocomplete="username"
+              maxlength="30" autofocus>
+          </label>
           <button type="submit">Get started</button>
         </form>
         <small>3–30 characters · letters, numbers, underscore</small>
@@ -210,22 +219,52 @@ export function signupCard(): string {
   `;
 }
 
-export function loginCard(prefillNick?: string): string {
+export function loginCard(prefillNick?: string, csrf?: string): string {
   const nick = prefillNick ? esc(prefillNick) : "";
+  const csrfField = csrf ? html`<input type="hidden" name="_csrf" value="${esc(csrf)}">` : "";
   return html`
     <div class="gg-signup-wrap">
-      <article class="gg-signup-card">
+      <article class="gg-signup-card gg-signup-card--login">
         <h2>Sign in</h2>
-        <p>Enter your nickname and password. Set a password from Profile while logged in on any device.</p>
+        <p class="gg-signup-card__lead">Use your nickname and password to pick up where you left off.</p>
         <form method="post" action="/login" class="gg-form-stack">
-          <input type="text" name="nickname" placeholder="nickname"
-            pattern="[A-Za-z0-9_]{3,30}" required autocomplete="username"
-            maxlength="30" value="${nick}" autofocus>
-          <input type="password" name="password" placeholder="password"
-            minlength="6" maxlength="200" required autocomplete="current-password">
+          ${raw(csrfField)}
+          <label class="gg-field">
+            <span class="gg-field__label">Nickname</span>
+            <input type="text" name="nickname" placeholder="your nickname"
+              pattern="[A-Za-z0-9_]{3,30}" required autocomplete="username"
+              maxlength="30" value="${nick}" autofocus>
+          </label>
+          <label class="gg-field">
+            <span class="gg-field__label">Password</span>
+            <input type="password" name="password" placeholder="your password"
+              minlength="6" maxlength="200" required autocomplete="current-password">
+          </label>
+          <label class="gg-check">
+            <input type="checkbox" name="remember" value="1" checked>
+            <span>Remember me on this device</span>
+          </label>
           <button type="submit">Sign in</button>
         </form>
         <p class="gg-signup-card__alt"><a href="/">New here? Join Town Ranch</a></p>
+      </article>
+    </div>
+  `;
+}
+
+export function loggedInCard(user: User): string {
+  return html`
+    <div class="gg-signup-wrap">
+      <article class="gg-signup-card gg-signup-card--session">
+        <h2>Already signed in</h2>
+        <p class="gg-session-card__who">Signed in as <strong>${esc(user.nickname)}</strong></p>
+        <p class="gg-signup-card__lead">You can jump back to the board or sign out to use a different account.</p>
+        <div class="gg-session-card__actions">
+          <a class="gg-btn-primary" href="/">Continue to board</a>
+          <form method="post" action="/logout">
+            <button type="submit" class="gg-btn-ghost">Sign out</button>
+          </form>
+        </div>
       </article>
     </div>
   `;

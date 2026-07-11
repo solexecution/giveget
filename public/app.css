@@ -196,6 +196,27 @@ label { display: block; font-weight: 500; margin-bottom: .35rem; font-size: .9re
   gap: .35rem;
 }
 
+.gg-header__user {
+  display: inline-flex;
+  align-items: center;
+  max-width: 8.5rem;
+  padding: .35rem .65rem;
+  border-radius: var(--gg-radius-pill);
+  background: var(--gg-chip-bg);
+  border: 1px solid var(--gg-border);
+  color: var(--gg-text);
+  font-size: .82rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gg-header__user:hover {
+  background: color-mix(in srgb, var(--gg-primary) 12%, var(--gg-chip-bg));
+  text-decoration: none;
+}
+
 .gg-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -1651,15 +1672,95 @@ th { color: var(--gg-muted); font-weight: 600; font-size: .75rem; text-transform
   font-size: .92rem;
   margin-bottom: 1.25rem;
 }
+.gg-signup-card__lead {
+  margin-bottom: 1.5rem;
+}
+.gg-signup-card--login {
+  text-align: left;
+}
+.gg-signup-card--login h2 {
+  text-align: center;
+}
+.gg-signup-card--session {
+  text-align: center;
+}
+.gg-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  text-align: left;
+}
+.gg-field__label {
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--gg-muted);
+  text-transform: uppercase;
+}
+.gg-check {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-size: .88rem;
+  color: var(--gg-text);
+  cursor: pointer;
+  user-select: none;
+}
+.gg-check input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--gg-primary);
+}
+.gg-session-card__who {
+  font-size: 1.05rem;
+  margin-bottom: .5rem;
+}
+.gg-session-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  margin-top: 1.25rem;
+}
+.gg-btn-primary,
+.gg-btn-ghost {
+  display: block;
+  width: 100%;
+  padding: .8rem 1rem;
+  border-radius: var(--gg-radius-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.gg-btn-primary {
+  background: var(--gg-primary);
+  color: var(--gg-primary-fg);
+  border: none;
+}
+.gg-btn-primary:hover { text-decoration: none; filter: brightness(1.05); }
+.gg-btn-ghost {
+  background: transparent;
+  color: var(--gg-muted);
+  border: 1px solid var(--gg-border);
+}
+.gg-btn-ghost:hover {
+  background: var(--gg-surface-2);
+  color: var(--gg-text);
+}
 .gg-signup-card form {
   display: flex;
   flex-direction: column;
   gap: .65rem;
 }
 .gg-signup-card input {
-  text-align: center;
-  font-size: 1.05rem;
+  text-align: left;
+  font-size: 1rem;
   font-weight: 500;
+}
+.gg-signup-card--session input {
+  text-align: center;
 }
 .gg-signup-card button {
   width: 100%;

@@ -17,6 +17,7 @@ import {
 } from "./db";
 import {
   clearSessionCookie,
+  ensureCsrfToken,
   generateToken,
   getClientIp,
   getCurrentUser,
@@ -26,8 +27,10 @@ import {
   setSessionCookie,
   setTheme,
   toggleTheme,
+  touchSessionCookie,
+  verifyCsrfToken,
 } from "./session";
-import { errorPage, esc, html, layout, loginCard, raw } from "./views";
+import { errorPage, esc, html, layout, loggedInCard, loginCard, raw } from "./views";
 import { photoExists, photoPath } from "./images";
 
 import { browseRoute, newListingRoutes, listingDetailRoute } from "./routes/listings";
@@ -38,6 +41,20 @@ import { deviceAuthRoutes } from "./routes/device-auth";
 import { getCoordNavVisible } from "./device-auth";
 
 const app = new Hono();
+
+function requestHost(c: { req: { header: (n: string) => string | undefined; url: string } }): string | null {
+  try {
+    return new URL(c.req.url).host;
+  } catch {
+    return null;
+  }
+}
+
+function hostMatchesRequest(c: { req: { header: (n: string) => string | undefined; url: string } }): boolean {
+  const host = c.req.header("host");
+  const reqHost = requestHost(c);
+  return !!host && !!reqHost && host === reqHost;
+}
 
 function sameOriginReferer(c: { req: { header: (n: string) => string | undefined; url: string } }): boolean {
   const referer = c.req.header("referer");
@@ -51,7 +68,8 @@ function sameOriginReferer(c: { req: { header: (n: string) => string | undefined
 
 function formPostAllowed(c: { req: { header: (n: string) => string | undefined; url: string; method: string } }): boolean {
   const site = c.req.header("sec-fetch-site");
-  if (site === "same-origin" || site === "same-site") return true;
+  // "none" appears on some mobile PWA form posts when Origin/Referer are stripped.
+  if (site === "same-origin" || site === "same-site" || (site === "none" && hostMatchesRequest(c))) return true;
   const origin = c.req.header("origin");
   if (origin) {
     try {
@@ -61,6 +79,14 @@ function formPostAllowed(c: { req: { header: (n: string) => string | undefined; 
     }
   }
   return sameOriginReferer(c);
+}
+
+function authFormAllowed(
+  c: { req: { header: (n: string) => string | undefined; url: string; method: string } },
+  form: FormData
+): boolean {
+  if (formPostAllowed(c)) return true;
+  return verifyCsrfToken(c, String(form.get("_csrf") ?? ""));
 }
 
 const formContentTypeRe = /^\b(application\/x-www-form-urlencoded|multipart\/form-data|text\/plain)\b/i;
@@ -78,12 +104,13 @@ app.use("*", async (c, next) => {
 });
 
 // Update last_ip / last_user_agent / last_seen_at on every authenticated request.
-// Pure write-through; doesn't gate the request.
+// Pure write-through; doesn't gate the request. Refresh persistent session cookies.
 app.use("*", async (c, next) => {
   await next();
   const u = getCurrentUser(c);
   if (u) {
     try { touchUserDevice(u.nickname, getClientIp(c), getUserAgent(c)); } catch {}
+    touchSessionCookie(c);
   }
 });
 
@@ -132,6 +159,9 @@ app.get("/about", (c) => c.redirect("/#about"));
 
 app.post("/signup", async (c) => {
   const form = await c.req.formData();
+  if (!authFormAllowed(c, form)) {
+    throw new HTTPException(403, { res: new Response("Forbidden", { status: 403 }) });
+  }
   const nickname = String(form.get("nickname") ?? "").trim();
 
   if (!/^[A-Za-z0-9_]{3,30}$/.test(nickname)) {
@@ -193,16 +223,34 @@ app.post("/signup", async (c) => {
 });
 
 app.get("/login", (c) => {
-  if (getCurrentUser(c)) return c.redirect("/");
+  const user = getCurrentUser(c);
+  if (user) {
+    return c.html(
+      layout({
+        title: "Sign in",
+        user,
+        body: loggedInCard(user),
+        theme: getTheme(c),
+      })
+    );
+  }
   const nickQ = String(c.req.query("nick") ?? "").trim();
   const prefill = nickQ ? findExistingNicknameIgnoreCase(nickQ) ?? nickQ : undefined;
-  return c.html(layout({ title: "Sign in", user: null, body: loginCard(prefill), theme: getTheme(c) }));
+  const csrf = ensureCsrfToken(c);
+  return c.html(
+    layout({ title: "Sign in", user: null, body: loginCard(prefill, csrf), theme: getTheme(c) })
+  );
 });
 
 app.post("/login", async (c) => {
   const form = await c.req.formData();
+  if (!authFormAllowed(c, form)) {
+    throw new HTTPException(403, { res: new Response("Forbidden", { status: 403 }) });
+  }
   const nicknameInput = String(form.get("nickname") ?? "").trim();
   const password = String(form.get("password") ?? "");
+  const rememberRaw = form.get("remember");
+  const remember = rememberRaw == null ? true : rememberRaw === "1";
 
   const nickname = findExistingNicknameIgnoreCase(nicknameInput);
   if (!nickname) {
@@ -250,11 +298,15 @@ app.post("/login", async (c) => {
 
   const token = generateToken();
   setSessionToken(nickname, token);
-  setSessionCookie(c, token);
+  setSessionCookie(c, token, remember);
   return c.redirect("/");
 });
 
-app.post("/logout", (c) => {
+app.post("/logout", async (c) => {
+  const form = await c.req.formData().catch(() => new FormData());
+  if (!authFormAllowed(c, form)) {
+    throw new HTTPException(403, { res: new Response("Forbidden", { status: 403 }) });
+  }
   clearSessionCookie(c);
   return c.redirect("/");
 });

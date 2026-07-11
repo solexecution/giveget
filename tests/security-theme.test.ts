@@ -30,7 +30,27 @@ describe("csrf and theme", () => {
         "content-type": "application/x-www-form-urlencoded",
         referer: `${base}/login`,
       },
-      body: "nickname=LoginRefererUser&password=secret123",
+      body: "nickname=LoginRefererUser&password=secret123&remember=1",
+      redirect: "manual",
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("/");
+  });
+
+  test("login POST with sec-fetch-site none and host match (PWA)", async () => {
+    await signup(app, base, "LoginPwaUser");
+    const hash = await Bun.password.hash("secret123", { algorithm: "bcrypt", cost: 4 });
+    const { setPasswordHash } = await import("../src/db.ts");
+    setPasswordHash("LoginPwaUser", hash);
+
+    const res = await app.request(`${base}/login`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        host: "localhost",
+        "sec-fetch-site": "none",
+      },
+      body: "nickname=LoginPwaUser&password=secret123&remember=1",
       redirect: "manual",
     });
     expect(res.status).toBe(302);

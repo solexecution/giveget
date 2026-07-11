@@ -37,7 +37,8 @@ export async function loginWithPassword(
   app: Hono,
   base: string,
   nickname: string,
-  password: string
+  password: string,
+  remember = true
 ): Promise<{ res: Response; cookie: string }> {
   const res = await app.request(`${base}/login`, {
     method: "POST",
@@ -45,7 +46,7 @@ export async function loginWithPassword(
       "content-type": "application/x-www-form-urlencoded",
       ...csrfHeaders(base),
     },
-    body: `nickname=${encodeURIComponent(nickname)}&password=${encodeURIComponent(password)}`,
+    body: `nickname=${encodeURIComponent(nickname)}&password=${encodeURIComponent(password)}&remember=${remember ? "1" : "0"}`,
   });
   return { res, cookie: cookieFrom(res) };
 }

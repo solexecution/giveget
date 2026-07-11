@@ -6,7 +6,26 @@ import type { Theme } from "./views";
 
 const COOKIE_NAME = "gg_sid";
 const THEME_COOKIE = "gg_theme";
-const ONE_YEAR_SECS = 60 * 60 * 24 * 365;
+const REMEMBER_COOKIE = "gg_remember";
+const CSRF_COOKIE = "gg_csrf";
+
+/** Persistent login when "Remember me" is checked (default). */
+export const SESSION_REMEMBER_MAX_AGE = 60 * 60 * 24 * 365;
+const CSRF_MAX_AGE = 60 * 60 * 2;
+
+export function isSecureCookie(c: Context): boolean {
+  if (process.env.NODE_ENV === "production") return true;
+  const proto = c.req.header("x-forwarded-proto");
+  return proto === "https";
+}
+
+function cookieBase(c: Context) {
+  return {
+    path: "/",
+    sameSite: "Lax" as const,
+    secure: isSecureCookie(c),
+  };
+}
 
 export function getTheme(c: Context): Theme {
   const v = getCookie(c, THEME_COOKIE);
@@ -37,14 +56,12 @@ export function getUserAgent(c: Context): string {
 
 export function setTheme(c: Context, theme: Theme): void {
   if (!theme) {
-    deleteCookie(c, THEME_COOKIE, { path: "/" });
+    deleteCookie(c, THEME_COOKIE, cookieBase(c));
     return;
   }
   setCookie(c, THEME_COOKIE, theme, {
-    path: "/",
-    sameSite: "Lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: ONE_YEAR_SECS,
+    ...cookieBase(c),
+    maxAge: SESSION_REMEMBER_MAX_AGE,
   });
 }
 
@@ -60,18 +77,57 @@ export function getSessionToken(c: Context): string | null {
   return getCookie(c, COOKIE_NAME) ?? null;
 }
 
-export function setSessionCookie(c: Context, token: string): void {
+export function wantsPersistentSession(c: Context): boolean {
+  return getCookie(c, REMEMBER_COOKIE) === "1";
+}
+
+/**
+ * remember=true (default): persistent cookie for PWA / browser restarts.
+ * remember=false: session cookie cleared when the browser closes.
+ */
+export function setSessionCookie(c: Context, token: string, remember = true): void {
+  const base = cookieBase(c);
   setCookie(c, COOKIE_NAME, token, {
-    path: "/",
+    ...base,
     httpOnly: true,
-    sameSite: "Lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: ONE_YEAR_SECS,
+    ...(remember ? { maxAge: SESSION_REMEMBER_MAX_AGE } : {}),
   });
+  if (remember) {
+    setCookie(c, REMEMBER_COOKIE, "1", { ...base, httpOnly: true, maxAge: SESSION_REMEMBER_MAX_AGE });
+  } else {
+    deleteCookie(c, REMEMBER_COOKIE, base);
+  }
+}
+
+/** Extend persistent sessions on activity so mobile PWAs stay signed in. */
+export function touchSessionCookie(c: Context): void {
+  const token = getSessionToken(c);
+  if (!token || !wantsPersistentSession(c)) return;
+  setSessionCookie(c, token, true);
 }
 
 export function clearSessionCookie(c: Context): void {
-  deleteCookie(c, COOKIE_NAME, { path: "/" });
+  const base = cookieBase(c);
+  deleteCookie(c, COOKIE_NAME, base);
+  deleteCookie(c, REMEMBER_COOKIE, base);
+}
+
+export function ensureCsrfToken(c: Context): string {
+  let token = getCookie(c, CSRF_COOKIE);
+  if (!token) {
+    token = generateToken();
+    setCookie(c, CSRF_COOKIE, token, {
+      ...cookieBase(c),
+      httpOnly: true,
+      maxAge: CSRF_MAX_AGE,
+    });
+  }
+  return token;
+}
+
+export function verifyCsrfToken(c: Context, formToken: string): boolean {
+  const cookie = getCookie(c, CSRF_COOKIE);
+  return !!cookie && !!formToken && cookie === formToken;
 }
 
 export function getCurrentUser(c: Context): User | null {

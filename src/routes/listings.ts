@@ -26,7 +26,7 @@ import {
   unarchiveListing,
 } from "../db";
 import { getCoordNavVisible } from "../device-auth";
-import { getCurrentUser, getTheme, HttpError, requireUser } from "../session";
+import { getCurrentUser, getTheme, HttpError, requireUser, ensureCsrfToken } from "../session";
 import {
   categoryFilterList,
   errorPage,
@@ -56,7 +56,8 @@ browseRoute.get("/", (c) => {
 
   // Gate: signed-out visitors get only the signup card. No listings until they join.
   if (!user) {
-    return c.html(layout({ title: "Join", user: null, body: signupCard(), theme: getTheme(c) }));
+    const csrf = ensureCsrfToken(c);
+    return c.html(layout({ title: "Join", user: null, body: signupCard(csrf), theme: getTheme(c) }));
   }
 
   const cat = url.searchParams.get("cat") as CategoryKey | null;
@@ -646,7 +647,8 @@ export const listingDetailRoute = new Hono();
 listingDetailRoute.get("/l/:id", (c) => {
   const user = getCurrentUser(c);
   if (!user) {
-    return c.html(layout({ title: "Join", user: null, body: signupCard(), theme: getTheme(c) }));
+    const csrf = ensureCsrfToken(c);
+    return c.html(layout({ title: "Join", user: null, body: signupCard(csrf), theme: getTheme(c) }));
   }
   const id = Number(c.req.param("id"));
   if (!Number.isInteger(id) || id < 1) {
