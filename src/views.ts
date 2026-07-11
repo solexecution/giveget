@@ -70,7 +70,7 @@ export function layout(opts: {
         </summary>
         <div class="gg-menu__panel cat-blade__panel">
           <h3>Categories</h3>
-          ${opts.filterBlade.chips}
+          ${raw(opts.filterBlade.chips)}
         </div>
       </details>`
     : "";
@@ -96,8 +96,8 @@ export function layout(opts: {
     ? html`
         <div class="gg-header__actions">
           <a class="gg-icon-btn gg-icon-btn--accent nav-desktop-only" href="/#new-listing" aria-label="New listing" title="New listing">+</a>
-          ${filterBtn}
-          ${accountMenu}
+          ${filterBtn ? raw(filterBtn) : ""}
+          ${accountMenu ? raw(accountMenu) : ""}
         </div>
       `
     : html`
