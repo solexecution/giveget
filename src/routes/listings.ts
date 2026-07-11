@@ -129,7 +129,7 @@ export const newListingRoutes = new Hono();
 
 export function editListingFormHtml(listing: Listing): string {
   return html`
-    <form method="post" action="/l/${listing.id}/edit">
+    <form method="post" action="/l/${listing.id}/edit" class="gg-form-stack">
       <label>
         Title
         <input type="text" name="title" maxlength="80" required value="${listing.title}">
@@ -154,65 +154,72 @@ export function editListingFormHtml(listing: Listing): string {
   `;
 }
 
+function listingTypeSegment(defaultType: ListingType): string {
+  const giveChecked = defaultType === "give" ? " checked" : "";
+  const getChecked = defaultType === "get" ? " checked" : "";
+  return `
+    <fieldset class="gg-type-segment">
+      <legend class="gg-sr-only">Listing type</legend>
+      <div class="gg-segment gg-segment--pill" role="radiogroup" aria-label="Give or Get">
+        <input type="radio" name="type" value="give" id="type_give" class="gg-segment__radio"${giveChecked}>
+        <label for="type_give" class="gg-segment__label gg-segment__label--give">Give</label>
+        <input type="radio" name="type" value="get" id="type_get" class="gg-segment__radio"${getChecked}>
+        <label for="type_get" class="gg-segment__label gg-segment__label--get">Get</label>
+      </div>
+    </fieldset>
+  `;
+}
+
 export function newListingFormHtml(defaultType: ListingType = "give"): string {
   const categoryOptions = CATEGORIES.map(
     (cat) => html`<option value="${cat.key}">${cat.label}</option>`
   ).join("");
 
-  const typeButtons =
-    defaultType === "give"
-      ? html`
-          <input type="radio" name="type" value="give" id="type_give" checked> <label for="type_give" style="display:inline">I want to <strong>give</strong> something</label><br>
-          <input type="radio" name="type" value="get"  id="type_get"> <label for="type_get" style="display:inline">I want to <strong>get</strong> something</label>
-        `
-      : html`
-          <input type="radio" name="type" value="give" id="type_give"> <label for="type_give" style="display:inline">I want to <strong>give</strong> something</label><br>
-          <input type="radio" name="type" value="get"  id="type_get" checked> <label for="type_get" style="display:inline">I want to <strong>get</strong> something</label>
-        `;
-
   return html`
-    <form method="post" action="/new" enctype="multipart/form-data">
-      <fieldset>
-        ${raw(typeButtons)}
-      </fieldset>
+    <form method="post" action="/new" enctype="multipart/form-data" class="gg-form-stack gg-form-stack--listing">
+      ${raw(listingTypeSegment(defaultType))}
 
-      <label>
-        Category
-        <select name="category" required>
-          ${raw(categoryOptions)}
-        </select>
-      </label>
-
-      <label>
-        Title
-        <input type="text" name="title" maxlength="80" required placeholder="e.g. Drill, can lend">
-      </label>
-
-      <label>
-        Description
-        <textarea name="description" maxlength="1000" rows="4" required
-          placeholder="When it's available, condition, where to find you, etc."></textarea>
-      </label>
-
-      <div class="exchange-prompt">
-        <label for="exchange_hint">
-          <strong>In exchange — your side of the swap</strong>
-          <small style="display:block;opacity:0.85;font-weight:normal;margin-top:0.2rem">
-            GiveGet runs on reciprocity. If you're <strong>giving</strong>, say what would make
-            this feel fair. If you're <strong>getting</strong>, say what you can offer back.
-            Specific asks get more replies than "open to anything".
-          </small>
-        </label>
-        <input type="text" id="exchange_hint" name="exchange_hint" maxlength="200"
-          placeholder="e.g. fresh eggs · help in the garden · a thank-you note · nothing, just pay it forward">
+      <div class="gg-field">
+        <label class="gg-field__label" for="listing_category">Category</label>
+        <div class="gg-field__control gg-field__control--select">
+          <select id="listing_category" name="category" required>
+            ${raw(categoryOptions)}
+          </select>
+        </div>
       </div>
 
-      <label>
-        Photos (up to ${MAX_PHOTOS_PER_LISTING})
-        <input type="file" name="photos" accept="image/*" multiple>
-      </label>
+      <div class="gg-field">
+        <label class="gg-field__label" for="listing_title">Title</label>
+        <input class="gg-field__input" type="text" id="listing_title" name="title" maxlength="80" required
+          placeholder="e.g. Drill, can lend">
+      </div>
 
-      <button type="submit">Post it</button>
+      <div class="gg-field">
+        <label class="gg-field__label" for="listing_description">Description</label>
+        <textarea class="gg-field__input" id="listing_description" name="description" maxlength="1000" rows="3" required
+          placeholder="When it's available, condition, where to find you…"></textarea>
+      </div>
+
+      <div class="gg-field">
+        <label class="gg-field__label" for="exchange_hint">In exchange</label>
+        <p class="gg-field__hint">What would make this feel fair? Specific asks get more replies.</p>
+        <input class="gg-field__input" type="text" id="exchange_hint" name="exchange_hint" maxlength="200"
+          placeholder="e.g. fresh eggs · garden help · a thank-you note">
+      </div>
+
+      <div class="gg-field">
+        <span class="gg-field__label" id="listing_photos_label">Photos</span>
+        <p class="gg-field__hint">Up to ${MAX_PHOTOS_PER_LISTING} images</p>
+        <label class="gg-file-drop" aria-labelledby="listing_photos_label">
+          <input class="gg-file-drop__input" type="file" name="photos" accept="image/*" multiple>
+          <span class="gg-file-drop__body">
+            <span class="gg-file-drop__icon" aria-hidden="true">+</span>
+            <span class="gg-file-drop__text">Tap to add photos</span>
+          </span>
+        </label>
+      </div>
+
+      <button type="submit" class="gg-btn-post">Post listing</button>
     </form>
   `;
 }
