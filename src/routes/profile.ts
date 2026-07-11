@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   CATEGORIES,
+  getArchivedListingsForUser,
   getClaimsForUser,
   getClaimsOnMyListings,
   getListingById,
@@ -37,6 +38,7 @@ profileRoutes.get("/me", (c) => {
   const myListings = getListingsByCreator(user.nickname);
   const myClaims = getClaimsForUser(user.nickname);
   const claimsOnMyStuff = getClaimsOnMyListings(user.nickname);
+  const archivedRows = getArchivedListingsForUser(user.nickname);
 
   // Combine: all claims I'm involved in, with my role
   const allInvolved: { claim: Claim; listing: Listing; role: "creator" | "claimant" }[] = [];
@@ -75,6 +77,21 @@ profileRoutes.get("/me", (c) => {
           · <small>${l.type} · ${CATEGORIES.find((c) => c.key === l.category)?.label ?? l.category}</small>
           · <strong>${l.status}</strong>
           · ${relativeAge(l.created_at)}${raw(editChip)}
+        </li>`;
+      }).join("")}</ul>`;
+
+  const archivedRowsHtml: string = archivedRows.length === 0
+    ? html`<p><em>No archived listings. Swipe left on a card in Browse to hide ones you're not interested in.</em></p>`
+    : `<ul>${archivedRows.map((row) => {
+        const listing = getListingById(row.listing_id);
+        if (!listing) return "";
+        return html`
+        <li>
+          <span>${listing.title}</span>
+          · <small>${listing.type} · archived ${relativeAge(row.archived_at)}</small>
+          <form method="post" action="/l/${listing.id}/unarchive" class="gg-inline-form">
+            <button type="submit" class="gg-btn-secondary">Restore</button>
+          </form>
         </li>`;
       }).join("")}</ul>`;
 
@@ -132,6 +149,12 @@ profileRoutes.get("/me", (c) => {
       <article class="gg-article">
         <h3>My listings</h3>
         ${raw(listingRows)}
+      </article>
+
+      <article class="gg-article">
+        <h3>Archived from browse</h3>
+        <p class="gg-help">Hidden listings stay on the board for others. Restore any time.</p>
+        ${raw(archivedRowsHtml)}
       </article>
 
       <article class="gg-article">

@@ -110,6 +110,7 @@ function servePublic(rel: string, type: string, cacheSecs = 86400) {
 }
 
 app.get("/app.css", servePublic("app.css", "text/css; charset=utf-8"));
+app.get("/card-swipe.js", servePublic("card-swipe.js", "application/javascript; charset=utf-8", 0));
 app.get("/manifest.webmanifest", servePublic("manifest.webmanifest", "application/manifest+json"));
 app.get("/sw.js", servePublic("sw.js", "application/javascript; charset=utf-8", 0));
 app.get("/icon.svg", servePublic("icon.svg", "image/svg+xml"));

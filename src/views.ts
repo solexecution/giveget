@@ -162,7 +162,7 @@ export function layout(opts: {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/app.css?v=5">
+<link rel="stylesheet" href="/app.css?v=6">
 </head>
 <body>
 <div class="gg-app">
@@ -182,6 +182,7 @@ export function layout(opts: {
 </div>
 ${opts.welcomeName ? `<div class="gg-toast" role="status">Welcome, <strong>${esc(opts.welcomeName)}</strong></div>` : ""}
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(()=>{})}</script>
+${opts.activeNav === "browse" ? '<script src="/card-swipe.js?v=1" defer></script>' : ""}
 </body>
 </html>`;
 }
@@ -301,7 +302,12 @@ export function listingCard(
   l: Listing,
   creator: User,
   photoPaths: string[],
-  opts: { hrefPrefix?: string; viewer?: User | null } = {}
+  opts: {
+    hrefPrefix?: string;
+    viewer?: User | null;
+    isNew?: boolean;
+    swipeArchive?: boolean;
+  } = {}
 ): Raw {
   const cat = CATEGORIES.find((c) => c.key === l.category)?.label ?? l.category;
   const age = relativeAge(l.created_at);
@@ -313,9 +319,13 @@ export function listingCard(
     isOwner && (l.status === "active" || l.status === "agreed")
       ? raw(`<a href="#edit-l-${l.id}" class="listing-card__edit" aria-label="Edit listing">edit</a>`)
       : "";
-  return raw(html`
-    <article class="listing-card listing-card--${l.type}">
-      <h4><a href="${prefix}${l.id}">${l.title}</a>${editLink}</h4>
+  const newClass = opts.isNew ? " listing-card--new" : "";
+  const newBadge = opts.isNew
+    ? raw(`<span class="listing-card__new-badge">New</span>`)
+    : "";
+  const cardInner = html`
+    <article class="listing-card listing-card--${l.type}${newClass}">
+      <h4><a href="${prefix}${l.id}">${l.title}</a>${editLink}${newBadge}</h4>
       <p class="listing-card__meta">
         <span class="type-chip ${l.type}">${l.type}</span>
         <span>${cat}</span>
@@ -325,6 +335,22 @@ export function listingCard(
       <p class="listing-card__author">${userSignal(creator)}</p>
       ${firstPhoto ? raw(`<div class="photos small"><img src="/photo/${esc(firstPhoto)}" alt=""></div>`) : ""}
     </article>
+  `;
+
+  if (!opts.swipeArchive) return raw(cardInner);
+
+  return raw(html`
+    <div class="listing-swipe" data-listing-id="${l.id}">
+      <div class="listing-swipe__action" aria-hidden="true">
+        <span class="listing-swipe__label">Archive</span>
+      </div>
+      <div class="listing-swipe__panel">
+        ${raw(cardInner)}
+        <form method="post" action="/l/${l.id}/archive" class="listing-swipe__archive-form">
+          <button type="submit" class="listing-card__archive-btn" aria-label="Archive listing, hide from feed">Archive</button>
+        </form>
+      </div>
+    </div>
   `);
 }
 
