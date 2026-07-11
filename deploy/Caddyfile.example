@@ -1,0 +1,13 @@
+# Replace giveget.example.com with your real domain.
+# Caddy handles HTTPS automatically via Let's Encrypt.
+
+giveget.example.com {
+    encode zstd gzip
+
+    # Limit upload size to keep photo uploads sane
+    request_body {
+        max_size 12MB
+    }
+
+    reverse_proxy localhost:3000
+}

@@ -1,0 +1,21 @@
+{
+  "name": "giveget-v0",
+  "version": "0.0.1",
+  "private": true,
+  "description": "GiveGet v0 — pre-MVP barter platform for one village. Bun + Hono + SQLite + plain HTML + Pico.css.",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch run src/server.ts",
+    "start": "bun run scripts/seed-if-empty.ts && bun run src/server.ts",
+    "expire": "bun run src/jobs/expire.ts"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "@picocss/pico": "^2.0.6",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/bun": "latest"
+  }
+}
