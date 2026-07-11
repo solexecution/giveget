@@ -136,7 +136,7 @@ describe("browse archive + new border logic", () => {
     const html = await board.text();
     expect(html).toContain("gg-toast--undo");
     expect(html).toContain(`data-listing-id="${listingId}"`);
-    expect(html).toContain("/me#archived");
+    expect(html).toContain("/me/archived");
   });
 
   test("new border shown for listings since last board visit", async () => {
@@ -168,5 +168,32 @@ describe("browse archive + new border logic", () => {
     expect(html).toContain(title);
     const newCards = html.match(/listing-card--new/g) ?? [];
     expect(newCards.length).toBe(0);
+  });
+
+  test("archived page is a dedicated route with restore", async () => {
+    const creator = await devAs("ArchivedPageCreator");
+    const viewer = await devAs("ArchivedPageViewer");
+    const title = `Archived page item ${Date.now()}`;
+    const listingId = await postListing(creator, title);
+
+    archiveListing("ArchivedPageViewer", listingId);
+
+    const page = await app.request(`${base}/me/archived`, { headers: { cookie: viewer } });
+    expect(page.status).toBe(200);
+    const html = await page.text();
+    expect(html).toContain("Archived from browse");
+    expect(html).toContain(title);
+    expect(html).toContain(`action="/l/${listingId}/unarchive"`);
+    expect(html).toContain("is-active");
+    expect(html).toContain('href="/me"');
+  });
+
+  test("profile page highlights profile nav and menu", async () => {
+    const viewer = await devAs("ProfileNavViewer");
+    const me = await app.request(`${base}/me`, { headers: { cookie: viewer } });
+    const html = await me.text();
+    expect(html).toContain('href="/me" class="is-active"');
+    expect(html).toContain('href="/me/archived"');
+    expect(html).not.toContain('id="archived"');
   });
 });

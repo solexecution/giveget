@@ -30,6 +30,52 @@ import { renderListingModals } from "./listings";
 
 export const profileRoutes = new Hono();
 
+function archivedListingsHtml(nickname: string): string {
+  const archivedRows = getArchivedListingsForUser(nickname);
+  if (archivedRows.length === 0) {
+    return html`<p><em>No archived listings. Swipe left on a card in Browse to hide ones you're not interested in.</em></p>`;
+  }
+  return `<ul>${archivedRows.map((row) => {
+    const listing = getListingById(row.listing_id);
+    if (!listing) return "";
+    return html`
+      <li>
+        <span>${listing.title}</span>
+        · <small>${listing.type} · archived ${relativeAge(row.archived_at)}</small>
+        <form method="post" action="/l/${listing.id}/unarchive" class="gg-inline-form">
+          <button type="submit" class="gg-btn-secondary">Restore</button>
+        </form>
+      </li>`;
+  }).join("")}</ul>`;
+}
+
+// ---------- GET /me/archived ----------
+
+profileRoutes.get("/me/archived", (c) => {
+  const user = requireUser(c);
+
+  const body = html`
+    <div class="gg-stack">
+      <article class="gg-article">
+        <h2>Archived from browse</h2>
+        <p class="gg-help">Swipe left on a card in Browse to hide it. Restore any time to see it on the board again.</p>
+        ${raw(archivedListingsHtml(user.nickname))}
+        <p class="gg-profile-nav"><a href="/me">← back to profile</a></p>
+      </article>
+    </div>
+  `;
+
+  return c.html(layout({
+    title: "Archived",
+    user,
+    body,
+    theme: getTheme(c),
+    activeNav: "profile",
+    activeMenu: "archived",
+    coordNavVisible: getCoordNavVisible(c, user),
+  }));
+});
+
 // ---------- GET /me ----------
 
 profileRoutes.get("/me", (c) => {
@@ -38,7 +84,7 @@ profileRoutes.get("/me", (c) => {
   const myListings = getListingsByCreator(user.nickname);
   const myClaims = getClaimsForUser(user.nickname);
   const claimsOnMyStuff = getClaimsOnMyListings(user.nickname);
-  const archivedRows = getArchivedListingsForUser(user.nickname);
+  const archivedCount = getArchivedListingsForUser(user.nickname).length;
 
   // Combine: all claims I'm involved in, with my role
   const allInvolved: { claim: Claim; listing: Listing; role: "creator" | "claimant" }[] = [];
@@ -80,21 +126,6 @@ profileRoutes.get("/me", (c) => {
         </li>`;
       }).join("")}</ul>`;
 
-  const archivedRowsHtml: string = archivedRows.length === 0
-    ? html`<p><em>No archived listings. Swipe left on a card in Browse to hide ones you're not interested in.</em></p>`
-    : `<ul>${archivedRows.map((row) => {
-        const listing = getListingById(row.listing_id);
-        if (!listing) return "";
-        return html`
-        <li>
-          <span>${listing.title}</span>
-          · <small>${listing.type} · archived ${relativeAge(row.archived_at)}</small>
-          <form method="post" action="/l/${listing.id}/unarchive" class="gg-inline-form">
-            <button type="submit" class="gg-btn-secondary">Restore</button>
-          </form>
-        </li>`;
-      }).join("")}</ul>`;
-
   const vouchBy = user.vouched_by ? ` by ${user.vouched_by}` : "";
   const vouchWhen = user.vouched_at ? ` · ${relativeAge(user.vouched_at)}` : "";
   const vouchInfo = user.is_vouched
@@ -122,6 +153,7 @@ profileRoutes.get("/me", (c) => {
       <article class="gg-article gg-profile-hero">
         <h2>${user.nickname}</h2>
         <p class="gg-stat-line">Given ${user.given_count} · Received ${user.received_count}</p>
+        <p class="gg-profile-nav"><a href="/me/archived">Archived from browse${archivedCount > 0 ? ` (${archivedCount})` : ""}</a></p>
         ${raw(vouchInfo)}
       </article>
 
@@ -151,12 +183,6 @@ profileRoutes.get("/me", (c) => {
         ${raw(listingRows)}
       </article>
 
-      <article class="gg-article" id="archived">
-        <h3>Archived from browse</h3>
-        <p class="gg-help">Swipe left on a card in Browse to hide it. Find everything here in Profile → Archived. Restore any time.</p>
-        ${raw(archivedRowsHtml)}
-      </article>
-
       <article class="gg-article">
         <h3>My exchanges</h3>
         ${raw(exchangeRows)}
@@ -169,7 +195,15 @@ profileRoutes.get("/me", (c) => {
     ))}
   `;
 
-  return c.html(layout({ title: "My profile", user, body, theme: getTheme(c), activeNav: "profile", coordNavVisible: getCoordNavVisible(c, user) }));
+  return c.html(layout({
+    title: "My profile",
+    user,
+    body,
+    theme: getTheme(c),
+    activeNav: "profile",
+    activeMenu: "profile",
+    coordNavVisible: getCoordNavVisible(c, user),
+  }));
 });
 
 // ---------- POST /me (update optional fields) ----------

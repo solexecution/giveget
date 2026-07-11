@@ -447,6 +447,11 @@ details.action form { margin-top: 0.35rem; }
   font-size: .92rem;
 }
 .gg-menu__item:hover { background: var(--gg-chip-bg); text-decoration: none; }
+.gg-menu__item.is-active {
+  background: color-mix(in srgb, var(--gg-primary) 12%, transparent);
+  color: var(--gg-primary);
+  font-weight: 600;
+}
 .gg-menu__btn {
   width: 100%;
   text-align: left;
@@ -466,6 +471,39 @@ details.action form { margin-top: 0.35rem; }
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--gg-muted);
+}
+
+/* Category filter list (compact, in filter blade) */
+
+.gg-cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.gg-cat-list__item {
+  display: block;
+  padding: .5rem .65rem;
+  border-radius: var(--gg-radius-sm);
+  font-size: .88rem;
+  text-decoration: none;
+  color: var(--gg-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gg-cat-list__item:hover {
+  background: var(--gg-chip-bg);
+  text-decoration: none;
+}
+
+.gg-cat-list__item.is-active {
+  background: color-mix(in srgb, var(--gg-primary) 14%, transparent);
+  color: var(--gg-primary);
+  font-weight: 600;
 }
 
 /* Feed */
@@ -1199,57 +1237,119 @@ article.listing-card.listing-card--new {
   outline-offset: 2px;
 }
 
-/* Category chips — no native select picker */
+/* Custom category dropdown (new listing form) */
 
-.gg-category-field {
-  border: none;
-  margin: 0;
-  padding: 0;
+.gg-profile-nav {
+  margin: 0.15rem 0 0;
+  font-size: 0.88rem;
+}
+.gg-profile-nav a {
+  font-weight: 600;
+}
+
+.gg-dropdown {
+  position: relative;
+}
+
+.gg-dropdown > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.gg-dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.gg-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--gg-radius-sm);
+  border: 1px solid var(--gg-border-strong);
+  background: var(--gg-surface-2);
+  color: var(--gg-text);
+  font-weight: 500;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.gg-dropdown[open] .gg-dropdown__trigger,
+.gg-dropdown__trigger:hover {
+  border-color: var(--gg-primary);
+}
+
+.gg-dropdown__value {
+  flex: 1;
   min-width: 0;
+  text-align: left;
+}
+
+.gg-dropdown__picked {
+  display: none;
+}
+
+.gg-dropdown:has(#cat_tools:checked) .gg-dropdown__picked--tools,
+.gg-dropdown:has(#cat_food:checked) .gg-dropdown__picked--food,
+.gg-dropdown:has(#cat_clothing:checked) .gg-dropdown__picked--clothing,
+.gg-dropdown:has(#cat_furniture:checked) .gg-dropdown__picked--furniture,
+.gg-dropdown:has(#cat_materials:checked) .gg-dropdown__picked--materials,
+.gg-dropdown:has(#cat_services:checked) .gg-dropdown__picked--services,
+.gg-dropdown:has(#cat_knowledge:checked) .gg-dropdown__picked--knowledge {
+  display: inline;
+}
+
+.gg-dropdown__chevron {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid var(--gg-muted);
+  border-bottom: 2px solid var(--gg-muted);
+  transform: rotate(45deg);
+  transition: transform .15s var(--gg-ease);
+}
+
+.gg-dropdown[open] .gg-dropdown__chevron {
+  transform: rotate(-135deg) translateY(-2px);
+}
+
+.gg-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.1rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  padding: 0.35rem;
+  background: var(--gg-surface);
+  border: 1px solid var(--gg-border);
+  border-radius: var(--gg-radius-sm);
+  box-shadow: var(--gg-shadow-lg);
 }
 
-.gg-chip-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
+.gg-dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--gg-radius-sm);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--gg-text);
+  cursor: pointer;
+  transition: background .15s;
 }
 
-@media (max-width: 720px) {
-  .gg-chip-grid {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 0.35rem;
-    padding-bottom: 0.1rem;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .gg-chip-grid::-webkit-scrollbar { display: none; }
-  .gg-chip { flex: 0 0 auto; }
-  .gg-chip__label {
-    min-height: auto;
-    padding: 0.38rem 0.7rem;
-    font-size: 0.72rem;
-    white-space: nowrap;
-    border-radius: var(--gg-radius-pill);
-  }
+.gg-dropdown__option:hover {
+  background: var(--gg-chip-bg);
 }
 
-@media (min-width: 721px) {
-  .gg-chip-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.gg-chip {
-  min-width: 0;
-}
-
-.gg-chip__radio {
+.gg-dropdown__radio {
   position: absolute;
   opacity: 0;
   width: 1px;
@@ -1263,39 +1363,14 @@ article.listing-card.listing-card--new {
   pointer-events: none;
 }
 
-.gg-chip__label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 2.85rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: var(--gg-radius-sm);
-  border: 1px solid var(--gg-border);
-  background: var(--gg-surface-2);
-  color: var(--gg-muted);
+.gg-dropdown__radio:checked + span {
+  color: var(--gg-primary);
   font-weight: 600;
-  font-size: 0.78rem;
-  line-height: 1.25;
-  cursor: pointer;
-  user-select: none;
-  transition: background .2s var(--gg-ease), border-color .2s var(--gg-ease), color .2s var(--gg-ease), box-shadow .2s var(--gg-ease);
 }
 
-.gg-chip__radio:checked + .gg-chip__label {
-  background: color-mix(in srgb, var(--gg-primary) 14%, var(--gg-surface-2));
-  border-color: var(--gg-primary);
-  color: var(--gg-text);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gg-primary) 35%, transparent);
-}
-
-.gg-chip__radio:focus-visible + .gg-chip__label {
+.gg-dropdown__radio:focus-visible + span {
   outline: 2px solid var(--gg-primary);
   outline-offset: 2px;
-}
-
-.gg-chip__label:active {
-  transform: scale(0.98);
 }
 
 /* Photo upload drop zone */

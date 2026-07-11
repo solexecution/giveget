@@ -55,7 +55,8 @@ export function layout(opts: {
   archiveUndoId?: number;
   theme?: Theme;
   activeNav?: "browse" | "profile" | "coord" | "about";
-  filterBlade?: { activeKey: string | null; chips: string };
+  activeMenu?: "profile" | "archived";
+  filterBlade?: { activeKey: string | null; list: string };
   coordNavVisible?: boolean;
 }): string {
   const isCoord = opts.coordNavVisible ?? !!opts.user?.is_coordinator;
@@ -70,8 +71,8 @@ export function layout(opts: {
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M4 5h16v2l-6 7v5l-4 1v-6L4 7z"/></svg>
         </summary>
         <div class="gg-menu__panel cat-blade__panel">
-          <h3>Categories</h3>
-          ${raw(opts.filterBlade.chips)}
+          <h3>Category</h3>
+          ${raw(opts.filterBlade.list)}
         </div>
       </details>`
     : "";
@@ -84,8 +85,8 @@ export function layout(opts: {
             <span>Signed in as <strong>${esc(opts.user.nickname)}</strong></span>
             <a class="gg-icon-btn" href="/toggle-theme" aria-label="${themeLabel}" title="${themeLabel}">${raw(themeIcon)}</a>
           </div>
-          <a href="/me" class="gg-menu__item">Your profile</a>
-          <a href="/me#archived" class="gg-menu__item">Archived from browse</a>
+          <a href="/me" class="gg-menu__item${opts.activeMenu === "profile" ? " is-active" : ""}">Your profile</a>
+          <a href="/me/archived" class="gg-menu__item${opts.activeMenu === "archived" ? " is-active" : ""}">Archived from browse</a>
           ${isCoord ? raw(`<a href="/coord" class="gg-menu__item">Coordinator panel</a>`) : ""}
           <form method="post" action="/logout">
             <button type="submit" class="gg-menu__btn">Sign out</button>
@@ -164,7 +165,7 @@ export function layout(opts: {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/app.css?v=7">
+<link rel="stylesheet" href="/app.css?v=8">
 </head>
 <body>
 <div class="gg-app">
@@ -184,7 +185,7 @@ export function layout(opts: {
 </div>
 ${opts.welcomeName ? `<div class="gg-toast" role="status">Welcome, <strong>${esc(opts.welcomeName)}</strong></div>` : ""}
 ${opts.archiveUndoId ? `<div class="gg-toast gg-toast--undo" role="status" data-listing-id="${opts.archiveUndoId}">
-  <span>Archived · <a href="/me#archived">see in Profile</a></span>
+  <span>Archived · <a href="/me/archived">see archived</a></span>
   <button type="button" class="gg-toast__undo">Undo</button>
 </div>` : ""}
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(()=>{})}</script>
@@ -293,15 +294,17 @@ export function userSignal(u: User): Raw {
   </span>`);
 }
 
-export function categoryChips(activeKey: string | null, type: "give" | "get"): Raw {
+export function categoryFilterList(activeKey: string | null, type: "give" | "get"): Raw {
   const allHref = type === "give" ? "/" : "/?need";
-  const chips = CATEGORIES.map((c) => {
-    const href = type === "give" ? `/?cat=${c.key}` : `/?need&cat=${c.key}`;
-    const cls = activeKey === c.key ? "active" : "";
-    return html`<a href="${href}" class="${cls}">${c.label}</a>`;
-  }).join("");
-  const allCls = activeKey === null ? "active" : "";
-  return raw(`<div class="category-chips"><a href="${allHref}" class="${allCls}">All</a>${chips}</div>`);
+  const items = [
+    `<a href="${allHref}" class="gg-cat-list__item${activeKey === null ? " is-active" : ""}">All categories</a>`,
+    ...CATEGORIES.map((c) => {
+      const href = type === "give" ? `/?cat=${c.key}` : `/?need&cat=${c.key}`;
+      const cls = activeKey === c.key ? " is-active" : "";
+      return `<a href="${href}" class="gg-cat-list__item${cls}">${esc(c.label)}</a>`;
+    }),
+  ].join("");
+  return raw(`<nav class="gg-cat-list" aria-label="Filter by category">${items}</nav>`);
 }
 
 export function listingCard(

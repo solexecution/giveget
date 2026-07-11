@@ -27,7 +27,7 @@ import {
 import { getCoordNavVisible } from "../device-auth";
 import { getCurrentUser, getTheme, HttpError, requireUser } from "../session";
 import {
-  categoryChips,
+  categoryFilterList,
   errorPage,
   esc,
   html,
@@ -135,7 +135,7 @@ browseRoute.get("/", (c) => {
     archiveUndoId,
     theme: getTheme(c),
     activeNav: "browse",
-    filterBlade: { activeKey: validCat, chips: categoryChips(validCat, "give").__raw },
+    filterBlade: { activeKey: validCat, list: categoryFilterList(validCat, "give").__raw },
     coordNavVisible: getCoordNavVisible(c, user),
   }));
 });
@@ -188,24 +188,33 @@ function listingTypeSegment(defaultType: ListingType): string {
 }
 
 function categorySegment(defaultKey: CategoryKey = "tools"): string {
-  const chips = CATEGORIES.map((cat, i) => {
+  const pickedLabels = CATEGORIES.map(
+    (cat) => `<span class="gg-dropdown__picked gg-dropdown__picked--${cat.key}">${esc(cat.label)}</span>`
+  ).join("");
+  const options = CATEGORIES.map((cat, i) => {
     const id = `cat_${cat.key}`;
     const checked = cat.key === defaultKey ? " checked" : "";
     const required = i === 0 ? " required" : "";
     return `
-      <div class="gg-chip">
-        <input type="radio" name="category" value="${cat.key}" id="${id}" class="gg-chip__radio"${checked}${required}>
-        <label for="${id}" class="gg-chip__label">${cat.label}</label>
-      </div>`;
+      <label class="gg-dropdown__option" for="${id}">
+        <input type="radio" name="category" value="${cat.key}" id="${id}" class="gg-dropdown__radio"${checked}${required}>
+        <span>${esc(cat.label)}</span>
+      </label>`;
   }).join("");
 
   return `
-    <fieldset class="gg-category-field">
-      <legend class="gg-field__label">Category</legend>
-      <div class="gg-chip-grid" role="radiogroup" aria-label="Category">
-        ${chips}
-      </div>
-    </fieldset>`;
+    <div class="gg-field gg-category-dropdown">
+      <span class="gg-field__label" id="listing_category_label">Category</span>
+      <details class="gg-dropdown">
+        <summary class="gg-dropdown__trigger" aria-labelledby="listing_category_label">
+          <span class="gg-dropdown__value">${pickedLabels}</span>
+          <span class="gg-dropdown__chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="gg-dropdown__panel" role="radiogroup" aria-label="Category">
+          ${options}
+        </div>
+      </details>
+    </div>`;
 }
 
 export function newListingFormHtml(defaultType: ListingType = "give"): string {
@@ -384,7 +393,7 @@ newListingRoutes.post("/l/:id/unarchive", (c) => {
   const id = Number(c.req.param("id"));
   if (!Number.isInteger(id) || id < 1) throw new HttpError(404, "Listing not found.");
   unarchiveListing(user.nickname, id);
-  const back = c.req.header("referer") ?? "/me";
+  const back = c.req.header("referer") ?? "/me/archived";
   return c.redirect(back);
 });
 
@@ -534,7 +543,7 @@ export function renderListingDetail(opts: {
 
   const categoryLabel = CATEGORIES.find((c) => c.key === listing.category)?.label ?? listing.category;
   const titleBlock = showBackLink
-    ? html`<h2 class="listing-detail__title">${listing.title}</h2>`
+    ? raw(html`<h2 class="listing-detail__title">${listing.title}</h2>`)
     : "";
 
   return html`
@@ -557,14 +566,14 @@ export function renderListingDetail(opts: {
       <p class="listing-detail__desc">${listing.description}</p>
 
       ${listing.exchange_hint
-        ? html`<p class="listing-detail__exchange">${listing.exchange_hint}</p>`
+        ? raw(html`<p class="listing-detail__exchange">${listing.exchange_hint}</p>`)
         : ""}
       ${raw(otherClaimsHint)}
       ${isCreator && (listing.status === "active" || listing.status === "agreed")
         ? raw(html`<p class="listing-detail__edit"><a href="#edit-l-${listing.id}">Edit this listing</a></p>`)
         : ""}
       ${claimBlock ? raw(`<hr class="listing-detail__rule">${claimBlock}`) : ""}
-      ${showBackLink ? html`<p class="listing-detail__back"><a href="/">← back to browse</a></p>` : ""}
+      ${showBackLink ? raw(html`<p class="listing-detail__back"><a href="/">← back to browse</a></p>`) : ""}
     </div>
   `;
 }
