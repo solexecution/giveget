@@ -1,4 +1,4 @@
-const CACHE = "giveget-shell-v3";
+const CACHE = "giveget-shell-v4";
 const PRECACHE = ["/app.css", "/icon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -22,7 +22,13 @@ self.addEventListener("fetch", (event) => {
 
   if (url.pathname === "/app.css" || url.pathname.startsWith("/icon")) {
     event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
+      fetch(event.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
