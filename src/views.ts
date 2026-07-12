@@ -101,7 +101,7 @@ export function layout(opts: {
   const headerActions = opts.user
     ? html`
         <div class="gg-header__actions">
-          ${headerUser}
+          ${raw(headerUser)}
           <a class="gg-icon-btn gg-icon-btn--accent nav-desktop-only" href="/#new-listing" aria-label="New listing" title="New listing">+</a>
           ${filterBtn ? raw(filterBtn) : ""}
           ${accountMenu ? raw(accountMenu) : ""}
