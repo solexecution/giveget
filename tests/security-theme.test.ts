@@ -107,4 +107,13 @@ describe("listings gate", () => {
     const res = await app.request(`${base}/`, { headers: { cookie } });
     expect(await res.text()).toContain("Town Ranch board");
   });
+
+  test("signed-in header renders profile link not escaped markup", async () => {
+    const { cookie } = await signup(app, base, "HeaderLinkUser");
+    const res = await app.request(`${base}/`, { headers: { cookie } });
+    const html = await res.text();
+    expect(html).toContain('<a class="gg-header__user" href="/me"');
+    expect(html).toContain("HeaderLinkUser</a>");
+    expect(html).not.toContain("&lt;a class=&quot;gg-header__user&quot;");
+  });
 });
